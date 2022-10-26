@@ -54,3 +54,7 @@ class ModelAnalysis:
         return self._get_joint_information(self.root)
 
     ### END ### Joint information ######
+
+
+
+# TODO: add domain knowledge, e.g. the user should be able to specify the system is a robotic arm with X DOF, and then the URDF analyser can analyse it and check that this is correct

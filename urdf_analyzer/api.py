@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 import logging
 from joint import JointsMetaInformation
+from model_analysis import ModelAnalysis
 
-from urdf_analyzer import URDFanalyzer
 
 @dataclass
 class URDFInformation:
@@ -29,13 +29,13 @@ def get_model_information(parser: str, **kwargs):
     
     """
     l = logging.getLogger("urdf_inspector")
-    analyzer = URDFanalyzer(l, parser)
+    model_analysis = ModelAnalysis(l)
     urdf_information = URDFInformation()
     
     if kwargs['joints'] == True and kwargs['filename'] is not None:
         urdf_root_dir = None
         if 'urdf_root_dir' in kwargs:
             urdf_root_dir = kwargs['urdf_root_dir']
-        urdf_information.joint_information: JointsMetaInformation = analyzer.get_joint_information(kwargs['filename'], urdf_root_dir)
+        urdf_information.joint_information: JointsMetaInformation = model_analysis.get_joint_information(kwargs['filename'], urdf_root_dir)
 
     return urdf_information
