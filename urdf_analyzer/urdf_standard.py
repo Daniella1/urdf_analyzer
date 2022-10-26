@@ -1,7 +1,3 @@
-
-
-
-
 from dataclasses import dataclass
 
 

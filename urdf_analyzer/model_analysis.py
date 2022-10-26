@@ -48,6 +48,9 @@ class ModelAnalysis:
 
     def get_joint_information(self, filename: str, urdf_root_dir:str=None):
         self.root = self.xml_urdf_reader(filename, urdf_root_dir)
+        if self.root is None:
+            self.logger.warning(f"The XML file {filename} has been read incorrectly. Returning empty joint information.")
+            return JointsMetaInformation([])
         return self._get_joint_information(self.root)
 
     ### END ### Joint information ######
