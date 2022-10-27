@@ -32,6 +32,9 @@ def model_information(args):
         urdfs_information: list[api.URDFInformation] = api.get_models_information(urdf_files=urdf_files, **vars(args))
         print(f"urdf information {urdfs_information[0].joint_information.joints[0].name}")
         print(f"len(urdfs_information): {len(urdfs_information)}")
+        if args.out is not None:
+            api.save_information(urdfs_information) # TODO: add the output file name
+    
         
 
 
@@ -74,7 +77,8 @@ def create_urdf_analyzer(manual_test=False):
     args_parser.usage = args_parser.format_help().replace("usage: ", "")
     
     if manual_test:
-        args = args_parser.parse_args(['model-information','--joints', '--filename', 'pioneer3dx.urdf','--urdf-root-dir','./resources/urdf_files/adept_mobile_robots/'])
+        # args = args_parser.parse_args(['model-information','--joints', '--filename', 'pioneer3dx.urdf','--urdf-root-dir','./resources/urdf_files/adept_mobile_robots/'])
+        args = args_parser.parse_args(['model-information','--joints','--urdf-search-dir','./resources/urdf_files/adept_mobile_robots/','--out','abc'])
     else:
         args = args_parser.parse_args()
 

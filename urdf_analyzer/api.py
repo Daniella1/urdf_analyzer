@@ -29,14 +29,15 @@ class URDFInformation:
         self.df_results = self.df_results.rename(index={0:self.filename})
 
        
-        
-
-
 
 def search_for_urdfs(dir: str):
+    l = logging.getLogger("urdf_inspector")
     list_of_urdf_file_paths = []
     for path in Path(dir).rglob("*.urdf"):
         list_of_urdf_file_paths.append(path)
+
+    if len(list_of_urdf_file_paths) == 0:
+        l.warning(f"No URDF files were found when searching in the path: {dir}")
     return list_of_urdf_file_paths
 
 
@@ -135,12 +136,17 @@ def save_information(urdfs_information: list[URDFInformation], output_file: str=
 
     from datetime import datetime
     if output_file is None:
-        output_file = f"results/{datetime.now().strftime('%Y_%m_%d-%I_%M_%S_%p')}"
-    dir = os.path.basename(output_file)
+        output_file = f"results/{datetime.now().strftime('%Y_%m_%d-%I_%M_%S_%p')}.csv"
+    dir = os.path.dirname(output_file)
+    print(dir)
     if not Path(dir).exists():
         os.mkdir(dir)
     elif Path(output_file).exists():
         l.warning(f"The file {output_file} exists. Overwriting it.")
 
-    
-    
+    df_results = pd.DataFrame()
+    for urdf_info in urdfs_information:
+        urdf_info.compile_results()
+        df_results.loc[urdf_info.filename,:] = urdf_info.df_results
+
+    print(df_results)
