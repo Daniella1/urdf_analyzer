@@ -2,6 +2,7 @@ from dataclasses import dataclass
 import logging
 import os
 from pathlib import Path
+import pandas as pd
 
 from joint import JointsMetaInformation
 from model_analysis import ModelAnalysis
@@ -10,8 +11,26 @@ from model_analysis import ModelAnalysis
 @dataclass
 class URDFInformation:
 
-    def __init__(self, joint_information: JointsMetaInformation=None):
+    def __init__(self, filename: str=None, joint_information: JointsMetaInformation=None):
         self.joint_information = joint_information
+        self.filename = filename
+        self.df_results = None
+
+    def compile_results(self, full_results=False):
+        self.df_results = pd.DataFrame(index=[0])
+        
+        if self.joint_information is not None:
+            if full_results:
+                self.df_results =  self.df_results.join(self.joint_information.df_results_full)
+            else:
+                self.df_results =  self.df_results.join(self.joint_information.df_results)
+
+        
+        self.df_results = self.df_results.rename(index={0:self.filename})
+
+       
+        
+
 
 
 def search_for_urdfs(dir: str):
@@ -32,7 +51,7 @@ def get_model_information(parser: str='yourdfpy', filename: str=None, model_anal
     :param \**kwargs:
         See below
     :raises XX:
-    :return YY:
+    :return urdf_information: a URDFInformation object consisting of the analysed data
     :rtype: URDFInformation
 
 
@@ -60,7 +79,7 @@ def get_model_information(parser: str='yourdfpy', filename: str=None, model_anal
             urdf_root_dir = kwargs['urdf_root_dir']
         root = model_analysis.xml_urdf_reader(filename, urdf_root_dir)
 
-    urdf_information = URDFInformation()
+    urdf_information = URDFInformation(filename)
     
     if kwargs['joints'] == True:
         urdf_information.joint_information: JointsMetaInformation = model_analysis.get_joint_information()
@@ -107,3 +126,21 @@ def get_models_information(urdf_files: list[str], **kwargs):
         urdfs_information.append(urdf_information)
 
     return urdfs_information
+
+
+
+
+def save_information(urdfs_information: list[URDFInformation], output_file: str=None):
+    l = logging.getLogger("urdf_inspector")
+
+    from datetime import datetime
+    if output_file is None:
+        output_file = f"results/{datetime.now().strftime('%Y_%m_%d-%I_%M_%S_%p')}"
+    dir = os.path.basename(output_file)
+    if not Path(dir).exists():
+        os.mkdir(dir)
+    elif Path(output_file).exists():
+        l.warning(f"The file {output_file} exists. Overwriting it.")
+
+    
+    

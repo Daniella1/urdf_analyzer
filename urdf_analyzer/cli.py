@@ -24,12 +24,15 @@ def model_information(args):
 
     if args.filename is not None:
         urdf_information: api.URDFInformation = api.get_model_information(**vars(args))
+        urdf_information.compile_results(False)
         print(f"urdf information {urdf_information.joint_information.joints[0].name}")
+        print(urdf_information.df_results)
     elif args.urdf_search_dir is not None:
         urdf_files = api.search_for_urdfs(args.urdf_search_dir)
         urdfs_information: list[api.URDFInformation] = api.get_models_information(urdf_files=urdf_files, **vars(args))
         print(f"urdf information {urdfs_information[0].joint_information.joints[0].name}")
         print(f"len(urdfs_information): {len(urdfs_information)}")
+        
 
 
 
@@ -52,6 +55,7 @@ def _create_model_information_parser(subparser):
     model_information_parser.add_argument('--parser', required=False, default=URDFparser.supported_parsers[0], help=f"the urdf parser to use. Choose from: {URDFparser.supported_parsers}")
     model_information_parser.add_argument("--urdf-root-dir", required=False, type=str, help="The root directory of the URDF file.")
     model_information_parser.add_argument('--joints', action='store_true', required=False, help="extract joint information: amount, types, names")
+    # potentially make a subparser for the joints and links, so that the user can specify if they want fully detailed results saved or not
     model_information_parser.add_argument('--links', required=False, help="extract link information: amount, names")
     model_information_parser.add_argument('--out', required=False, help="The name of the output file to save the results")
 
