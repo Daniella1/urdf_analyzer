@@ -3,10 +3,11 @@ import os
 
 class URDFparser:
 
+    supported_parsers = ['yourdfpy','urdfpy','roboticstoolbox'] 
 
     def __init__(self, parser: str, logger: Logger):
         self.logger = logger
-        self.supported_parsers = ['yourdfpy','urdfpy','roboticstoolbox'] 
+        # self.supported_parsers = self.supported_parsers
         assert len(self.supported_parsers) == len(set(self.supported_parsers)), f"The list of parsers ({self.supported_parsers}) contains duplicates. Each parser should be unique." # should mathematically be a set, as we do not want duplicates
         if parser not in self.supported_parsers:
             self.logger.error(f"The chosen parser '{parser}' is not currently supported. Please choose a parser that is supported from: '{self.supported_parsers}'")
