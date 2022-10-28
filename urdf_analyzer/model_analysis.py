@@ -1,7 +1,7 @@
 import xml.etree.ElementTree as ET
 import os
 from logging import Logger
-from joint import Joint, JointsMetaInformation
+from urdf_analyzer.joint import Joint, JointsMetaInformation
 
 
 class ModelAnalysis:
@@ -9,6 +9,7 @@ class ModelAnalysis:
 
     def __init__(self, logger: Logger):
         self.logger = logger
+        self.root = None
 
 
     def xml_urdf_reader(self, filename: str, urdf_root_dir:str=None):

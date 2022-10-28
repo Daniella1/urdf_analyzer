@@ -4,7 +4,7 @@ import setuptools
 #     long_description = fh.read()
 
 setuptools.setup(
-    name="aurt",
+    name="urdf_analyzer",
     version="0.0.1",
     author="Daniella Tola",
     author_email="dt@ece.au.dk",
@@ -15,7 +15,6 @@ setuptools.setup(
     packages=["urdf_analyzer"],
     install_requires=[
         "numpy>=1",
-        "sympy>=1",
         "pandas>=1",
     ],
     extras_require={

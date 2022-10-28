@@ -4,8 +4,8 @@ import os
 from pathlib import Path
 import pandas as pd
 
-from joint import JointsMetaInformation
-from model_analysis import ModelAnalysis
+from urdf_analyzer.joint import JointsMetaInformation
+from urdf_analyzer.model_analysis import ModelAnalysis
 
 
 @dataclass
@@ -73,18 +73,23 @@ def get_model_information(parser: str='yourdfpy', filename: str=None, model_anal
     """
     l = logging.getLogger("urdf_inspector")
 
-    if filename is not None and 'model_analysis' not in kwargs:
+    if filename is not None and model_analysis is None:
         model_analysis = ModelAnalysis(l)
         urdf_root_dir = None
         if 'urdf_root_dir' in kwargs:
             urdf_root_dir = kwargs['urdf_root_dir']
         root = model_analysis.xml_urdf_reader(filename, urdf_root_dir)
 
-    urdf_information = URDFInformation(filename)
-    
-    if kwargs['joints'] == True:
-        urdf_information.joint_information: JointsMetaInformation = model_analysis.get_joint_information()
+    # checking that the file has been parsed by the xml reader in model_analysis
+    if model_analysis is None or model_analysis.root is None:
+        l.warning("The filename has not be properly passed to the xml reader. Returning empty URDFInformation object.")
+        return URDFInformation()
 
+    urdf_information = URDFInformation(filename)
+
+    if 'joints' in kwargs and kwargs['joints'] == True:
+        urdf_information.joint_information: JointsMetaInformation = model_analysis.get_joint_information()
+        
     return urdf_information
 
 
@@ -122,6 +127,9 @@ def get_models_information(urdf_files: list[str], **kwargs):
 
         urdf_root_dir = os.path.dirname(os.path.abspath(urdf_file))
         model_analysis.xml_urdf_reader(urdf_file, urdf_root_dir)
+        if 'filename' in kwargs.keys():
+            # if kwargs['filename'] is None:
+            kwargs['filename'] = os.path.basename(urdf_file)
         urdf_information = get_model_information(model_analysis=model_analysis, **kwargs)
 
         urdfs_information.append(urdf_information)
@@ -138,15 +146,23 @@ def save_information(urdfs_information: list[URDFInformation], output_file: str=
     if output_file is None:
         output_file = f"results/{datetime.now().strftime('%Y_%m_%d-%I_%M_%S_%p')}.csv"
     dir = os.path.dirname(output_file)
-    print(dir)
+    l.debug(f"Output directory for saving analysis information: '{dir}'")
     if not Path(dir).exists():
+        l.debug(f"Creating directory for saving analysis information: '{Path(dir)}'")
         os.mkdir(dir)
+
+    # check if provided filename has extension .csv
+    ext = [".csv"]
+    if output_file[-4:] != ext[0]:
+        output_file += ext[0]
     elif Path(output_file).exists():
         l.warning(f"The file {output_file} exists. Overwriting it.")
 
     df_results = pd.DataFrame()
     for urdf_info in urdfs_information:
         urdf_info.compile_results()
-        df_results.loc[urdf_info.filename,:] = urdf_info.df_results
+        df_results = pd.concat([df_results, urdf_info.df_results]) # for each urdf file, add the urdf_info results to the dataframe
 
-    print(df_results)
+    df_results.to_csv(Path(output_file))
+
+    return df_results

@@ -1,9 +1,10 @@
 import argparse
 from logging.config import fileConfig
 import logging
-import api as api
+import urdf_analyzer.api as api
 
-from urdf_parser import URDFparser
+from urdf_analyzer.urdf_parser import URDFparser
+
 
 
 def setup_logger(args):
@@ -32,9 +33,12 @@ def model_information(args):
         urdfs_information: list[api.URDFInformation] = api.get_models_information(urdf_files=urdf_files, **vars(args))
         print(f"urdf information {urdfs_information[0].joint_information.joints[0].name}")
         print(f"len(urdfs_information): {len(urdfs_information)}")
+        print(f"args.out: {args.out}")
         if args.out is not None:
-            api.save_information(urdfs_information) # TODO: add the output file name
-    
+            if isinstance(args.out,str):
+                api.save_information(urdfs_information, args.out)
+            elif args.out is True:
+                api.save_information(urdfs_information)
         
 
 
@@ -60,7 +64,8 @@ def _create_model_information_parser(subparser):
     model_information_parser.add_argument('--joints', action='store_true', required=False, help="extract joint information: amount, types, names")
     # potentially make a subparser for the joints and links, so that the user can specify if they want fully detailed results saved or not
     model_information_parser.add_argument('--links', required=False, help="extract link information: amount, names")
-    model_information_parser.add_argument('--out', required=False, help="The name of the output file to save the results")
+    # if --out is provided with no argument, then store true, and save using default filename, otherwise if argument provided then use as filename 
+    model_information_parser.add_argument('--out', required=False, action='store', const=True, nargs="?", help="The name of the output file to save the results. Will be saved as .csv by default.")
 
     model_information_parser.set_defaults(analyze=model_information)
 
@@ -78,7 +83,7 @@ def create_urdf_analyzer(manual_test=False):
     
     if manual_test:
         # args = args_parser.parse_args(['model-information','--joints', '--filename', 'pioneer3dx.urdf','--urdf-root-dir','./resources/urdf_files/adept_mobile_robots/'])
-        args = args_parser.parse_args(['model-information','--joints','--urdf-search-dir','./resources/urdf_files/adept_mobile_robots/','--out','abc'])
+        args = args_parser.parse_args(['model-information','--joints','--urdf-search-dir','./resources/urdf_files/adept_mobile_robots/','--out','results/abc'])
     else:
         args = args_parser.parse_args()
 

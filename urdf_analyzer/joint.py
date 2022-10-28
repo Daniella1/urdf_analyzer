@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from urdf_standard import JointStandard
+from urdf_analyzer.urdf_standard import JointStandard
 import pandas as pd
 
 # following the standard defined in: https://wiki.ros.org/urdf/XML/joint
