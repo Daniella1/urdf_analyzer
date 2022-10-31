@@ -1,6 +1,8 @@
+import os
 import logging
 import unittest
 from pathlib import Path
+
 
 from urdf_analyzer import api
 from urdf_analyzer.urdf_parser import URDFparser
@@ -29,13 +31,14 @@ class APITests(unittest.TestCase):
             return
 
         # Check that the path to the test URDF file exists
-        self.urdf_root_dir = "adept_mobile_robots"
+        self.urdf_root_dir = Path("adept_mobile_robots")
         self.working_urdf_filename = "pioneer3dx.urdf"
         if not Path(self.urdf_files_dir/self.urdf_root_dir/self.working_urdf_filename).exists():
             logging.error(f"The path '{Path(self.urdf_files_dir/self.urdf_root_dir/self.working_urdf_filename)}' to the urdf file does not exist. Stopping test.")
             return
 
-    ############# get_model_information() #################
+    ############# get_model_information(...) #################
+
     def test_get_model_information_joints(self):
         # Run the get_model_information function
         kwargs = {'urdf_root_dir': self.urdf_files_dir/self.urdf_root_dir, 'joints': True}
@@ -58,7 +61,42 @@ class APITests(unittest.TestCase):
         self.assertEqual(urdf_information, api.URDFInformation()) # expect empty URDFInformation object
         self.assertIsNone(urdf_information.joint_information) # expect the joint_information is None, as the joints cannot be checked if an error has occured with the file
 
-    # def test_get_model_information_
+    ############# search_for_urdfs(...) #################
+
+    def test_search_for_urdfs(self):
+        expected_urdf_files = ['pioneer-lx-devil.urdf', 'pioneer-lx.urdf', 'pioneer3at.urdf', 'pioneer3dx.urdf']
+        dir = Path(self.urdf_files_dir,self.urdf_root_dir)
+        list_of_urdf_file_paths = api.search_for_urdfs(dir)
+        self.assertEqual(len(list_of_urdf_file_paths), len(expected_urdf_files))
+        for path, expected_file in zip(list_of_urdf_file_paths, expected_urdf_files):
+            file = os.path.basename(path)
+            self.assertEqual(file, expected_file)
+
+
+    def test_search_for_urdfs_folder_nonexistant(self):
+        dir = Path("non_existing_folder")
+        list_of_urdf_file_paths = api.search_for_urdfs(dir)
+        self.assertEqual(list_of_urdf_file_paths,[])
+
+    # TODO: create a test where there are multiple directories with urdf files
+
+    ############# get_models_information(...) #################
+
+    def test_get_models_information(self):
+        kwargs = {'joints': True}
+        urdf_files = [Path("./resources/urdf_files/adept_mobile_robots/pioneer-lx-devil.urdf"),
+                    Path("./resources/urdf_files/adept_mobile_robots/pioneer-lx.urdf"),
+                    Path("./resources/urdf_files/adept_mobile_robots/pioneer3at.urdf"),
+                    Path("./resources/urdf_files/adept_mobile_robots/pioneer3dx.urdf")]
+        urdfs_information: list(api.URDFInformation) = api.get_models_information(urdf_files=urdf_files, **kwargs)
+        self.assertEqual(len(urdfs_information), len(urdf_files))
+        for urdf_info in urdfs_information:
+            self.assertIsNotNone(urdf_info)
+        
+
+    ############# save_information(...) #################
+
+
 
 if __name__ == '__main__':
     unittest.main()

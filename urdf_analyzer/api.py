@@ -1,11 +1,13 @@
 from dataclasses import dataclass
 import logging
 import os
+from typing import Union
 from pathlib import Path
 import pandas as pd
 
 from urdf_analyzer.joint import JointsMetaInformation
 from urdf_analyzer.model_analysis import ModelAnalysis
+from urdf_analyzer.constants import *
 
 
 @dataclass
@@ -30,9 +32,16 @@ class URDFInformation:
 
        
 
-def search_for_urdfs(dir: str):
-    l = logging.getLogger("urdf_inspector")
+def search_for_urdfs(dir: Union[str, Path]):
+    l = logging.getLogger("urdf_analyzer")
+
     list_of_urdf_file_paths = []
+
+    # Check that path exists
+    if not Path(dir).exists():
+        l.warning(f"The path '{dir}' for searching for urdf files does not exist. Returning empty list.")
+        return list_of_urdf_file_paths
+
     for path in Path(dir).rglob("*.urdf"):
         list_of_urdf_file_paths.append(path)
 
@@ -71,7 +80,7 @@ def get_model_information(parser: str='yourdfpy', filename: str=None, model_anal
         - filename structure etc.
     
     """
-    l = logging.getLogger("urdf_inspector")
+    l = logging.getLogger("urdf_analyzer")
 
     if filename is not None and model_analysis is None:
         model_analysis = ModelAnalysis(l)
@@ -119,7 +128,7 @@ def get_models_information(urdf_files: list[str], **kwargs):
         - filename structure etc.
     
     """
-    l = logging.getLogger("urdf_inspector")
+    l = logging.getLogger("urdf_analyzer")
     model_analysis = ModelAnalysis(l)
     urdfs_information = []
 
@@ -128,7 +137,6 @@ def get_models_information(urdf_files: list[str], **kwargs):
         urdf_root_dir = os.path.dirname(os.path.abspath(urdf_file))
         model_analysis.xml_urdf_reader(urdf_file, urdf_root_dir)
         if 'filename' in kwargs.keys():
-            # if kwargs['filename'] is None:
             kwargs['filename'] = os.path.basename(urdf_file)
         urdf_information = get_model_information(model_analysis=model_analysis, **kwargs)
 
@@ -140,11 +148,11 @@ def get_models_information(urdf_files: list[str], **kwargs):
 
 
 def save_information(urdfs_information: list[URDFInformation], output_file: str=None):
-    l = logging.getLogger("urdf_inspector")
+    l = logging.getLogger("urdf_analyzer")
 
     from datetime import datetime
     if output_file is None:
-        output_file = f"results/{datetime.now().strftime('%Y_%m_%d-%I_%M_%S_%p')}.csv"
+        output_file = f"{DEFAULT_OUTPUT_DIR}/{datetime.now().strftime('%Y_%m_%d-%I_%M_%S_%p')}.csv"
     dir = os.path.dirname(output_file)
     l.debug(f"Output directory for saving analysis information: '{dir}'")
     if not Path(dir).exists():
