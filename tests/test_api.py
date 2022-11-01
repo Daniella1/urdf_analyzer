@@ -1,11 +1,10 @@
-import os
-import logging
-import unittest
 from pathlib import Path
+import unittest
+import logging
+import os
 
-
-from urdf_analyzer import api
 from urdf_analyzer.urdf_parser import URDFparser
+from urdf_analyzer import api
 
 
 class APITests(unittest.TestCase):
@@ -88,7 +87,7 @@ class APITests(unittest.TestCase):
                     Path("./resources/urdf_files/adept_mobile_robots/pioneer-lx.urdf"),
                     Path("./resources/urdf_files/adept_mobile_robots/pioneer3at.urdf"),
                     Path("./resources/urdf_files/adept_mobile_robots/pioneer3dx.urdf")]
-        urdfs_information: list(api.URDFInformation) = api.get_models_information(urdf_files=urdf_files, **kwargs)
+        urdfs_information: list[api.URDFInformation] = api.get_models_information(urdf_files=urdf_files, **kwargs)
         self.assertEqual(len(urdfs_information), len(urdf_files))
         for urdf_info in urdfs_information:
             self.assertIsNotNone(urdf_info)

@@ -54,12 +54,10 @@ class JointsMetaInformation:
         for joint_type in JointStandard.joint_types:
             self.n_joint_types[joint_type] = len([j for j in joints if j.type == joint_type])
 
-        
         # Save results to pandas DataFrame
         self.df_columns_short = ["n_joints", "joint_names", "joint_types"]
         self.df_columns_full = self.df_columns_short + [f"n_{j}_joints" for j in JointStandard.joint_types]
         
-        # self.df_results = pd.DataFrame(columns=self.df_columns_short)
         self.df_results_full = pd.DataFrame(columns=self.df_columns_full)
         self.df_results_full.loc[0, self.df_columns_full[0]] = self.n_joints # get number of joints
         self.df_results_full.loc[0, self.df_columns_full[1]] = [j.name for j in self.joints] # get joint names

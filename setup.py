@@ -18,7 +18,8 @@ setuptools.setup(
         "pandas>=1",
     ],
     extras_require={
-        "urdf_tools": ["yourdfpy","urdfpy","roboticstoolbox-python"]
+        "urdf_tools": ["yourdfpy","urdfpy","roboticstoolbox-python"],
+        "testing": ["coverage"]
     },
     classifiers=[
         "Programming Language :: Python :: 3",

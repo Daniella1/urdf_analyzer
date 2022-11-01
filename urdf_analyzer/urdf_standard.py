@@ -16,3 +16,16 @@ class JointStandard:
     assert len(joint_types) == len(joint_type_explanations), f"The length of the joints types ({len(joint_types)}) is not the same as the length of the joint type explanations ({len(joint_type_explanations)}). There is an error in the implemented standard of the joints."
     for i in range(len(joint_types)):
         joint_types_and_explanations[joint_types[i]] = joint_type_explanations[i]
+
+
+
+# following the standard defined in: https://wiki.ros.org/urdf/XML/link
+# also following the standard defined in the URDFdom xsd: https://github.com/ros/urdfdom/blob/master/xsd/urdf.xsd 
+@dataclass
+class LinkStandard:
+    visualisation_types = ["visual", "collision"]
+    geometry_types = ["mesh", "sphere", "cylinder", "box"]
+    geometries_arguments = {geometry_types[0]: {'required': ['filename'], 'optional': ['scale']},
+                            geometry_types[1]: {'required': ['radius'], 'optional': []},
+                            geometry_types[2]: {'required': ['radius', 'length'], 'optional': []},
+                            geometry_types[3]: {'required': [], 'optional': ['size']}}

@@ -39,7 +39,8 @@ class CLITests(unittest.TestCase):
                     urdf_root_dir:str=None,
                     joints:bool=None,
                     links:bool=None,
-                    out=None):
+                    out=None,
+                    full:bool=None):
         subparsers,_ = cli._init_parsers()
         model_information_parser = cli._create_model_information_parser(subparsers)
         model_information_parser.logger_config = None
@@ -50,6 +51,7 @@ class CLITests(unittest.TestCase):
         model_information_parser.joints = joints
         model_information_parser.links = links
         model_information_parser.out = out
+        model_information_parser.full = full
         return model_information_parser
 
     def test_model_information_filename_provided(self):
