@@ -4,7 +4,12 @@ import os
 
 class URDFparser:
 
-    supported_parsers = ['yourdfpy','urdfpy','roboticstoolbox'] 
+    supported_parsers = ['yourdfpy','urdfpy','roboticstoolbox','matlab'] 
+
+    def _set_default_parser(self):
+        default_parser = self.supported_parsers[0]
+        import yourdfpy
+        self.parser[default_parser] = yourdfpy
 
     def __init__(self, parser: str, logger: Logger):
         self.logger = logger
@@ -23,10 +28,14 @@ class URDFparser:
         elif parser == self.supported_parsers[2]:
             import roboticstoolbox as rtb
             self.parser[parser] = rtb
-        # elif parser == self.supported_parsers[3]:
-        #     import matlab.engine
-        #     eng = matlab.engine.start_matlab()
-        #     self.parser[parser] = eng
+        elif parser == self.supported_parsers[3]:
+            try:
+                import matlab.engine
+                eng = matlab.engine.start_matlab()
+                self.parser[parser] = eng
+            except ImportError as e:
+                self.logger.error(f"The matlab engine for python is not installed. Skipping it, and defaulting to {self.supported_parsers[0]}")
+                self._set_default_parser()
         self._set_urdf_loader()
 
 
@@ -44,8 +53,8 @@ class URDFparser:
         elif self.supported_parsers[2] == parser:
             self.urdf_loader = self.parser[parser].ERobot.URDF
         # matlab
-        # elif self.supported_parsers[3] == parser:
-        #     self.urdf_loader = self.parser[parser].importrobot
+        elif self.supported_parsers[3] == parser:
+            self.urdf_loader = self.parser[parser].importrobot
         return self.urdf_loader
 
 

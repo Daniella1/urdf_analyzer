@@ -17,8 +17,8 @@ Todo tool:
 * Development CLI
     - add cli for geometry (.dae, .stl, .obj)
     - add cli for file analysis ('xacro' in file, 'package' in file)
-
-
+* Documentation
+    - describe the different schemas that can be generated
 
 Notes:
 

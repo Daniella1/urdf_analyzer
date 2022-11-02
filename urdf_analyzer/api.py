@@ -3,7 +3,6 @@ from typing import Union
 import pandas as pd
 import logging
 import os
-from urdf_analyzer import urdf_parser
 
 
 from urdf_analyzer.urdf_components.joint import JointsMetaInformation
@@ -185,6 +184,7 @@ def save_parsing_information(df_results, output_file: str=None):
 
     df_results = _save_information(df_results, output_file)
     return df_results
+
 
 
 def _save_information(df_results, output_file: str=None):
