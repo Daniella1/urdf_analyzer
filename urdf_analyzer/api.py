@@ -1,43 +1,17 @@
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Union
 import pandas as pd
 import logging
 import os
+from urdf_analyzer import urdf_parser
 
 
 from urdf_analyzer.urdf_components.joint import JointsMetaInformation
 from urdf_analyzer.urdf_components.link import LinksMetaInformation
+from urdf_analyzer.urdf_components.urdf_information import URDFInformation
 from urdf_analyzer.model_analysis import ModelAnalysis
+from urdf_analyzer.urdf_parser import URDFparser
 from urdf_analyzer.constants import *
-
-
-@dataclass
-class URDFInformation:
-
-    def __init__(self, filename: str=None, joint_information: JointsMetaInformation=None, link_information: LinksMetaInformation=None):
-        self.joint_information = joint_information
-        self.link_information = link_information
-        self.filename = filename
-        self.df_results = None
-
-    def compile_results(self, full_results=False):
-        self.df_results = pd.DataFrame(index=[0])
-        
-        self._add_res_to_dataframe("joint_information", full_results)
-        self._add_res_to_dataframe("link_information", full_results)
-        
-        self.df_results = self.df_results.rename(index={0:self.filename})
-
-    
-    def _add_res_to_dataframe(self, information, full_results=False):
-        info = getattr(self, str(information))
-        if info is not None:
-            if full_results:
-                self.df_results =  self.df_results.join(info.df_results_full)
-            else:
-                self.df_results =  self.df_results.join(info.df_results)
-        
 
        
 
@@ -59,12 +33,10 @@ def search_for_urdfs(dir: Union[str, Path]):
     return list_of_urdf_file_paths
 
 
-def get_model_information(parser: str='yourdfpy', filename: str=None, model_analysis: ModelAnalysis=None, **kwargs):
+def get_model_information(filename: str=None, model_analysis: ModelAnalysis=None, **kwargs):
     """
     Get information on the model of the URDF, i.e. joints, links, etc.
 
-    :param parser: the urdf parser to use, can choose from: {yourdfpy, urdfpy, roboticstoolbox}
-    :type parser: str
     :param filename: the URDF filename
     :type filename: str
     :param \**kwargs:
@@ -85,7 +57,6 @@ def get_model_information(parser: str='yourdfpy', filename: str=None, model_anal
     full description
 
     .. note::
-        - uses the chosen parser to load the URDF file
         - filename structure etc.
     
     """
@@ -135,7 +106,6 @@ def get_models_information(urdf_files: list[str], **kwargs):
     full description
 
     .. note::
-        - uses the chosen parser to load the URDF file
         - filename structure etc.
     
     """
@@ -156,18 +126,76 @@ def get_models_information(urdf_files: list[str], **kwargs):
     return urdfs_information
 
 
+def _parser_urdf(logger: logging.Logger, filename: str, parser: str, urdf_root_dir: str):
+    tool_parser = URDFparser(parser, logger)
+    model = tool_parser.load_urdf(filename, urdf_root_dir)
+    return model
 
 
-def save_information(urdfs_information: list[URDFInformation], output_file: str=None, full_results=False):
+def get_parsing_information(filename: str, parser: Union[str, list[str]]=URDFparser.supported_parsers, urdf_root_dir: str=None):
+    l = logging.getLogger("urdf_analyzer")
+    if isinstance(parser, str):
+        parser = [parser]
+
+    # results on urdf files and tools
+    urdfs_and_tools_results_column_names = parser
+    urdfs_and_tools_results = pd.DataFrame(columns=urdfs_and_tools_results_column_names)
+
+    for p in parser:
+        model = _parser_urdf(l, filename, p, urdf_root_dir)
+        urdfs_and_tools_results.loc[0, p] = True if model is not None else False
+
+    # Update urdfs_and_tools_results with sum of tools where the URDF file passes
+    urdfs_and_tools_results.loc[:,'count'] = urdfs_and_tools_results.sum(numeric_only=False, axis=1)
+    urdfs_and_tools_results = urdfs_and_tools_results.sort_values(by='count', ascending=False)
+
+    # TODO: unify the saving method, e.g. if the 'filename' should only be the file or also the directory
+    urdfs_and_tools_results = urdfs_and_tools_results.rename(index={0:filename})
+
+    return urdfs_and_tools_results
+
+
+def get_parsings_information(urdf_files: list[str], parser: Union[str, list[str]]=URDFparser.supported_parsers):
+    l = logging.getLogger("urdf_analyzer")
+    parsing_results = pd.DataFrame()
+
+    for urdf_file in urdf_files:
+        urdf_root_dir = os.path.dirname(os.path.abspath(urdf_file))
+        parsing_result = get_parsing_information(urdf_file, parser, urdf_root_dir)
+        parsing_results = pd.concat([parsing_results, parsing_result])
+
+    return parsing_results
+
+
+def save_model_information(urdfs_information: list[URDFInformation], output_file: str=None, full_results=False):
     l = logging.getLogger("urdf_analyzer")
 
+    df_results = pd.DataFrame()
+    for urdf_info in urdfs_information:
+        urdf_info.compile_results(full_results)
+        df_results = pd.concat([df_results, urdf_info.df_results]) # for each urdf file, add the urdf_info results to the dataframe
+
+    df_results = _save_information(df_results, output_file)
+
+    return df_results
+
+
+def save_parsing_information(df_results, output_file: str=None):
+    l = logging.getLogger("urdf_analyzer")
+
+    df_results = _save_information(df_results, output_file)
+    return df_results
+
+
+def _save_information(df_results, output_file: str=None):
+    l = logging.getLogger("urdf_analyzer")
     from datetime import datetime
     if output_file is None:
         output_file = f"{DEFAULT_OUTPUT_DIR}/{datetime.now().strftime('%Y_%m_%d-%I_%M_%S_%p')}.csv"
     dir = os.path.dirname(output_file)
-    l.debug(f"Output directory for saving analysis information: '{dir}'")
+    l.info(f"Output directory for saving analysis information: '{dir}'")
     if not Path(dir).exists():
-        l.debug(f"Creating directory for saving analysis information: '{Path(dir)}'")
+        l.info(f"Creating directory for saving analysis information: '{Path(dir)}'")
         os.mkdir(dir)
 
     # check if provided filename has extension .csv
@@ -176,11 +204,6 @@ def save_information(urdfs_information: list[URDFInformation], output_file: str=
         output_file += ext[0]
     elif Path(output_file).exists():
         l.warning(f"The file {output_file} exists. Overwriting it.")
-
-    df_results = pd.DataFrame()
-    for urdf_info in urdfs_information:
-        urdf_info.compile_results(full_results)
-        df_results = pd.concat([df_results, urdf_info.df_results]) # for each urdf file, add the urdf_info results to the dataframe
 
     df_results.to_csv(Path(output_file))
 

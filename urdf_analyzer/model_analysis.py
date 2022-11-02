@@ -2,7 +2,7 @@ import xml.etree.ElementTree as ET
 import os
 from logging import Logger
 from urdf_analyzer.urdf_components.joint import Joint, JointsMetaInformation
-from urdf_analyzer.urdf_components.link import Geometry, Link, LinksMetaInformation, Mesh, Box, Sphere, Cylinder
+from urdf_analyzer.urdf_components.link import Link, LinksMetaInformation, Mesh, Box, Sphere, Cylinder
 from urdf_analyzer.urdf_standard import LinkStandard
 
 class ModelAnalysis:

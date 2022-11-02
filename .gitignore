@@ -55,7 +55,7 @@ docs/_build/
 # results folder
 results*
 
-# urdf folders and files not used for testing
+# exclude urdf folders and files not used for testing
 !resources/urdf_files
 resources/urdf_files/*
 !resources/urdf_files/adept_mobile_robots*

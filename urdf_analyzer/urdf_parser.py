@@ -1,4 +1,5 @@
 from logging import Logger
+from pathlib import Path
 import os
 
 class URDFparser:
@@ -7,12 +8,12 @@ class URDFparser:
 
     def __init__(self, parser: str, logger: Logger):
         self.logger = logger
-        # self.supported_parsers = self.supported_parsers
         assert len(self.supported_parsers) == len(set(self.supported_parsers)), f"The list of parsers ({self.supported_parsers}) contains duplicates. Each parser should be unique." # should mathematically be a set, as we do not want duplicates
         if parser not in self.supported_parsers:
             self.logger.error(f"The chosen parser '{parser}' is not currently supported. Please choose a parser that is supported from: '{self.supported_parsers}'")
             return
             # TODO: do something other than just return
+        self.parser = {}
         if parser == self.supported_parsers[0]:
             import yourdfpy
             self.parser[parser] = yourdfpy
@@ -26,25 +27,25 @@ class URDFparser:
         #     import matlab.engine
         #     eng = matlab.engine.start_matlab()
         #     self.parser[parser] = eng
-        self._parser_load_urdf()
-        return self.parser
+        self._set_urdf_loader()
 
 
 
 
-    def _parser_load_urdf(self):
+    def _set_urdf_loader(self):
+        parser = list(self.parser.keys())[0]
         # yourdfpy
-        if self.supported_parsers[0] == self.parser.keys()[0]:
-            self.urdf_loader = self.parser[self.supported_parsers[0]].URDF.load
+        if self.supported_parsers[0] == parser:
+            self.urdf_loader = self.parser[parser].URDF.load
         # urdfpy
-        elif self.supported_parsers[1] == self.parser.keys()[0]:
-            self.urdf_loader = self.parser[self.parser.keys()[0]].URDF.load
+        elif self.supported_parsers[1] == parser:
+            self.urdf_loader = self.parser[parser].URDF.load
         # roboticstoolbox
-        elif self.supported_parsers[2] == self.parser.keys()[0]:
-            self.urdf_loader = self.parser[self.parser.keys()[0]].ERobot.URDF
+        elif self.supported_parsers[2] == parser:
+            self.urdf_loader = self.parser[parser].ERobot.URDF
         # matlab
-        # elif self.supported_parsers[3] == self.parser.keys()[0]:
-        #     self.urdf_loader = self.parser[self.parser.keys()[0]].importrobot
+        # elif self.supported_parsers[3] == parser:
+        #     self.urdf_loader = self.parser[parser].importrobot
         return self.urdf_loader
 
 
@@ -57,10 +58,11 @@ class URDFparser:
         filename_only = os.path.basename(basename)
         try:
             os.chdir(urdf_root_dir)
-            model = self.urdf_loader(urdf_root_dir + "/" + filename_only)
-            self.logger.debug(f"Successfully loaded {basename} using the urdf loader {self.parser.keys()[0]}")
+            self.logger.info(f"Trying to load urdf file: {urdf_root_dir}/{filename_only}")
+            model = self.urdf_loader(filename_only)
+            self.logger.info(f"Successfully loaded {urdf_root_dir}/{filename_only} using the urdf loader {list(self.parser.keys())[0]}")
         except:
-            self.logger.error(f"Failed to load {basename}")
+            self.logger.warning(f"Failed to load {urdf_root_dir}/{filename_only}")
             model = None
             pass
         os.chdir(root_dir)

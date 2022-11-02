@@ -35,7 +35,6 @@ class CLITests(unittest.TestCase):
     def set_model_information_arguments(self,
                     filename:str=None,
                     urdf_search_dir:str=None,
-                    parser:str=None,
                     urdf_root_dir:str=None,
                     joints:bool=None,
                     links:bool=None,
@@ -46,7 +45,6 @@ class CLITests(unittest.TestCase):
         model_information_parser.logger_config = None
         model_information_parser.filename = filename
         model_information_parser.urdf_search_dir = urdf_search_dir
-        model_information_parser.parser = parser
         model_information_parser.urdf_root_dir = urdf_root_dir
         model_information_parser.joints = joints
         model_information_parser.links = links

@@ -17,11 +17,12 @@ class APITests(unittest.TestCase):
         """
         logging.basicConfig(level=logging.ERROR)
 
-        # Check that the chosen parser is supported
-        self.parser = 'yourdfpy' if 'yourdfpy' in URDFparser.supported_parsers else None
-        if self.parser == None:
-            logging.error(f"The parser 'yourdfpy' is not one of the supported parsers '{URDFparser.supported_parsers}. Stopping test.")
-            return
+        # TODO: move this check to the urdf parser
+        # # Check that the chosen parser is supported
+        # self.parser = 'yourdfpy' if 'yourdfpy' in URDFparser.supported_parsers else None
+        # if self.parser == None:
+        #     logging.error(f"The parser 'yourdfpy' is not one of the supported parsers '{URDFparser.supported_parsers}. Stopping test.")
+        #     return
 
         # Check that the directory containing URDF files for testing exists
         self.urdf_files_dir = Path("resources/urdf_files")
@@ -41,22 +42,22 @@ class APITests(unittest.TestCase):
     def test_get_model_information_joints(self):
         # Run the get_model_information function
         kwargs = {'urdf_root_dir': self.urdf_files_dir/self.urdf_root_dir, 'joints': True}
-        urdf_information: api.URDFInformation = api.get_model_information(parser=self.parser, filename=self.working_urdf_filename, **kwargs)
+        urdf_information: api.URDFInformation = api.get_model_information(filename=self.working_urdf_filename, **kwargs)
         self.assertIsNotNone(urdf_information.joint_information)
         self.assertEqual(urdf_information.joint_information.n_joints, 10)
         
     def test_get_model_information_joints_not_passed_kwarg(self):
         kwargs = {'urdf_root_dir': self.urdf_files_dir/self.urdf_root_dir}
-        urdf_information: api.URDFInformation = api.get_model_information(parser=self.parser, filename=self.working_urdf_filename, **kwargs)
+        urdf_information: api.URDFInformation = api.get_model_information(filename=self.working_urdf_filename, **kwargs)
         self.assertIsNone(urdf_information.joint_information) # expect the joint_information is None, as the joints are not passed in the kwargs
 
     def test_get_model_information_filename_none_joints_not_passed_kwarg(self):
-        urdf_information: api.URDFInformation = api.get_model_information(parser=self.parser, filename=None)
+        urdf_information: api.URDFInformation = api.get_model_information(filename=None)
         self.assertIsNone(urdf_information.joint_information) # expect the joint_information is None, as the joints are not passed in the kwargs
 
     def test_get_model_information_filename_none_joints_passed_kwarg(self):
         kwargs = {'joints': True}
-        urdf_information: api.URDFInformation = api.get_model_information(parser=self.parser, filename=None, **kwargs)
+        urdf_information: api.URDFInformation = api.get_model_information(filename=None, **kwargs)
         self.assertEqual(urdf_information, api.URDFInformation()) # expect empty URDFInformation object
         self.assertIsNone(urdf_information.joint_information) # expect the joint_information is None, as the joints cannot be checked if an error has occured with the file
 
@@ -93,7 +94,7 @@ class APITests(unittest.TestCase):
             self.assertIsNotNone(urdf_info)
         
 
-    ############# save_information(...) #################
+    ############# save_model_information(...) #################
 
 
 

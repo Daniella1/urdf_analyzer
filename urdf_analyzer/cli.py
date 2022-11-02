@@ -1,9 +1,9 @@
 import argparse
 from logging.config import fileConfig
 import logging
-import urdf_analyzer.api as api
 import sys
 
+import urdf_analyzer.api as api
 from urdf_analyzer.urdf_parser import URDFparser
 
 
@@ -12,19 +12,23 @@ def setup_logger(args):
     if args.logger_config is not None:
         fileConfig(args.logger_config)
     else:
-        logging.basicConfig(format='[%(filename)s:%(lineno)d] %(message)s', level=logging.WARNING)
+        logging.basicConfig(format='[%(filename)s:%(lineno)d] %(message)s', level=logging.ERROR)
     return logging.getLogger("urdf_analyzer")
+
+
+def _validate_common_args(args, l):
+    if args.urdf_search_dir is not None:
+        if args.urdf_root_dir is not None:
+            l.warning(f"The urdf-root-dir argument was parsed together with the urdf-search-dir. Ignoring the urdf-root-dir argument, as the tool will be searching for urdf files in the directory specified using urdf-search-dir: {args.urdf_search_dir}.")
+        if args.filename is not None:
+            l.warning(f"The filename argument was parsed together with the urdf-search-dir. Ignoring the filename argument, as the tool will be searching for urdf files in the directory specified using urdf-search-dir: {args.urdf_search_dir}.")
 
 
 def model_information(args):
     l = setup_logger(args)
     l.info("Obtaining model information")
 
-    if args.urdf_search_dir is not None:
-        if args.urdf_root_dir is not None:
-            l.warning(f"The urdf-root-dir argument was parsed together with the urdf-search-dir. Ignoring the urdf-root-dir argument, as the tool will be searching for urdf files in the directory specified using urdf-search-dir: {args.urdf_search_dir}.")
-        if args.filename is not None:
-            l.warning(f"The filename argument was parsed together with the urdf-search-dir. Ignoring the filename argument, as the tool will be searching for urdf files in the directory specified using urdf-search-dir: {args.urdf_search_dir}.")
+    _validate_common_args(args, l)
 
     if args.out is None and args.full is True:
         l.warning(f"The 'full' argument was provided although the 'out' was not. Ignoring the 'full' argument.") 
@@ -39,37 +43,71 @@ def model_information(args):
 
     if args.out is not None:
         if isinstance(args.out,str):
-            api.save_information(urdfs_information, args.out, args.full)
+            api.save_model_information(urdfs_information, args.out, args.full)
         elif args.out is True:
-            api.save_information(urdfs_information, full_results=args.full)
+            api.save_model_information(urdfs_information, full_results=args.full)
+
         
     return urdfs_information
 
 
+def parsing_information(args):
+    l = setup_logger(args)
+    l.info("Obtaining parsing information")
+
+    _validate_common_args(args, l)
+
+    if args.parser is not None and args.parser not in URDFparser.supported_parsers:
+        l.error(f"The provided parser: '{args.parser}' is not currently supported. The supported parsers are: '{URDFparser.supported_parsers}'. Exiting.")
+        return None
+
+    if args.all_parsers:
+        parser = URDFparser.supported_parsers
+    elif args.parser is not None:
+        parser = args.parser
+
+    if args.urdf_search_dir is not None:
+        urdf_files = api.search_for_urdfs(args.urdf_search_dir)
+        parsing_results = api.get_parsings_information(urdf_files, parser)
+
+    elif args.filename is not None:
+        parsing_results = api.get_parsing_information(args.filename, parser, args.urdf_root_dir)
+
+    if args.out is not None:
+        if isinstance(args.out,str):
+            api.save_parsing_information(parsing_results, args.out)
+        elif args.out is True:
+            api.save_parsing_information(parsing_results)
+
+    return parsing_results
+
+
 def _init_parsers():
-    args_parser = argparse.ArgumentParser(add_help=True)
+    args_parser = argparse.ArgumentParser(add_help=True, allow_abbrev=False)
     args_parser.add_argument('--logger-config', type=open, help="Logger configuration file.")
 
     subparsers = args_parser.add_subparsers(help="Information to obtain from analysis.")
     return subparsers, args_parser
 
-def _create_model_information_parser(subparser):
-    model_information_parser = subparser.add_parser("model-information")
-
-    group = model_information_parser.add_mutually_exclusive_group(required=True)
+def _add_common_arguments(subparser):
+    group = subparser.add_mutually_exclusive_group(required=True)
     group.add_argument('--filename', type=str, help="URDF filename.")
     group.add_argument('--urdf-search-dir', type=str, help="The directory to perform a recursive search for URDF files and pass them for analysis.")
+
+    subparser.add_argument("--urdf-root-dir", required=False, type=str, help="The root directory of the URDF file.")
+    # if --out is provided with no argument, then store true, and save using default filename, otherwise if argument provided then use as filename 
+    subparser.add_argument('--out', required=False, action='store', const=True, nargs="?", help="The name of the output file to save the results. Will be saved as .csv by default.")
+
+
+def _create_model_information_parser(subparser):
+    model_information_parser = subparser.add_parser("model-information", allow_abbrev=False)
+
+    _add_common_arguments(model_information_parser)
     
-
-    model_information_parser.add_argument('--parser', required=False, default=URDFparser.supported_parsers[0], help=f"the urdf parser to use. Choose from: {URDFparser.supported_parsers}")
-    model_information_parser.add_argument("--urdf-root-dir", required=False, type=str, help="The root directory of the URDF file.")
-
     # potentially make a subparser for the joints and links, so that the user can specify if they want fully detailed results saved or not
     model_information_parser.add_argument('--joints', action='store_true', required=False, help="extract joint information: amount, types, names")
     model_information_parser.add_argument('--links', action='store_true', required=False, help="extract link information: amount, names")
 
-    # if --out is provided with no argument, then store true, and save using default filename, otherwise if argument provided then use as filename 
-    model_information_parser.add_argument('--out', required=False, action='store', const=True, nargs="?", help="The name of the output file to save the results. Will be saved as .csv by default.")
     # if --out is true, then it should be possible to specify if you want full results or not. By default the shorter version of the results will be provided. The full results can be provided, by supplying the argument --full
     # TODO: make this argument only possible if --out is specified
     model_information_parser.add_argument('--full', required=False, action='store_true', default=False, help="save full version of results")
@@ -78,12 +116,28 @@ def _create_model_information_parser(subparser):
 
     return model_information_parser
 
+def _create_parsing_information_parser(subparser):
+    parsing_information_parser = subparser.add_parser("parsing-information", allow_abbrev=False)
+
+    _add_common_arguments(parsing_information_parser)
+
+    group = parsing_information_parser.add_mutually_exclusive_group(required=True)
+    group.add_argument('--parser', choices=URDFparser.supported_parsers, nargs="+", help=f"The urdf parser to use. Choose from: {URDFparser.supported_parsers}")
+    group.add_argument('--all-parsers', action='store_true', help=f"Try parsing the urdf files with all the supported parsers: '{URDFparser.supported_parsers}'")
+
+    parsing_information_parser.set_defaults(analyze=parsing_information)
+
+    return parsing_information_parser    
+
 
 def create_urdf_analyzer(manual_test:list=[]):
     subparsers, args_parser = _init_parsers()
 
     # model information
     _create_model_information_parser(subparsers)
+
+    # parsing information
+    _create_parsing_information_parser(subparsers)
 
     # Force help display when error occurrs. See https://stackoverflow.com/questions/3636967/python-argparse-how-can-i-display-help-automatically-on-error
     args_parser.usage = args_parser.format_help().replace("usage: ", "")
@@ -105,7 +159,11 @@ def create_urdf_analyzer(manual_test:list=[]):
 def main():
     manual_test_list1 = ['model-information','--joints','--links','--urdf-search-dir','./resources/urdf_files/adept_mobile_robots/','--out','--full']
     manual_test_list2 = ['model-information','--joints', '--filename', 'pioneer3dx.urdf','--urdf-root-dir','./resources/urdf_files/adept_mobile_robots/']
-    create_urdf_analyzer(manual_test=[])
+    manual_test_list3 = ['model-information','--filename','pioneer3dx.urdf','--urdf-root-dir','resources/urdf_files/adept_mobile_robots','--parser','yourdfpy']
+    manual_test_list4 = ['parsing-information','--filename','pioneer3dx.urdf','--urdf-root-dir','resources/urdf_files/adept_mobile_robots','--parser','yourdfpy']
+    manual_test_list5 = ['parsing-information','--filename','pioneer3dx.urdf','--urdf-root-dir','resources/urdf_files/adept_mobile_robots','--all-parsers','--out']
+    manual_test_list6 = ['parsing-information','--urdf-search-dir','./resources/urdf_files/adept_mobile_robots/','--all-parsers','--out']
+    create_urdf_analyzer(manual_test=manual_test_list6)
 
 
 if __name__ == '__main__':
