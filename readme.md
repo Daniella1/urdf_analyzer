@@ -7,6 +7,7 @@ Todo tool:
     - add testing of the 'full' argument in the cli tests
     - add testing of get_parsing_information in the api tests
     - add testing of parsing_information in the cli tests
+    - add a test to check that the generated schema contains all of the necessary information, e.g. filenames..
 * Development API
     - in the save information func, check that the checking of existence of the output file is done correctly with regards to the directory
     - figure out how to export the information, csv? txt? latex table?
@@ -14,6 +15,8 @@ Todo tool:
     - does it make sense to add an exclusion of files or subfolders when performing the urdf-search-dir?
     - add domain knowledge, e.g. the user should be able to specify the system is a robotic arm with X DOF, and then the URDF analyser can analyse it and check that this is correct
     - check if it would be better/faster to load one URDF loader, and then run through all the files, or if the current method is ok.
+    - fix the checking of 'xacro' and 'package' to ensure it's not in the comments of the xml file
+    - create a get_mesh_analysis_schema function that just takes out the mesh values from the model_information dataframe
 * Development CLI
     - add cli for geometry (.dae, .stl, .obj)
     - add cli for file analysis ('xacro' in file, 'package' in file)

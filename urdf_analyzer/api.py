@@ -5,14 +5,13 @@ import logging
 import os
 
 
+from urdf_analyzer.urdf_components.urdf_information import URDFInformation
 from urdf_analyzer.urdf_components.joint import JointsMetaInformation
 from urdf_analyzer.urdf_components.link import LinksMetaInformation
-from urdf_analyzer.urdf_components.urdf_information import URDFInformation
 from urdf_analyzer.model_analysis import ModelAnalysis
 from urdf_analyzer.urdf_parser import URDFparser
 from urdf_analyzer.constants import *
 
-       
 
 def search_for_urdfs(dir: Union[str, Path]):
     l = logging.getLogger("urdf_analyzer")
@@ -31,6 +30,216 @@ def search_for_urdfs(dir: Union[str, Path]):
         l.warning(f"No URDF files were found when searching in the path: {dir}")
     return list_of_urdf_file_paths
 
+
+def schema_generator(schemas, files, **kwargs):
+    urdf_parsing_comparison = None
+    if "model-info" in schemas:
+        generate_model_information_schema(files)
+    if "urdf-parse-cmp" in schemas:
+        urdf_parsing_comparison = generate_urdf_parsing_comparison_schema(files)
+    if "tool-cmp" in schemas:
+        urdf_parsing_comparison = urdf_parsing_comparison if not None else None
+        generate_tool_comparison_schema(files, urdf_parsing_comparison)
+    if "duplicates-cmp" in schemas:
+        generate_duplicates_comparison_schema(kwargs['duplicates_dir'])
+
+
+def _count_word_in_urdf_file(word, urdf_file):
+    with open(urdf_file) as f:
+        return int(f.read().count(word))
+
+
+def _get_word_information(words, file):
+    for word in list(words.keys()):
+        words[word] = _count_word_in_urdf_file(word, file)
+    return words
+
+
+def generate_tool_comparison_schema(urdf_files, urdf_parsing_results=None, out=True):
+    parsers = URDFparser.supported_parsers
+    parser_results = {}
+    for p in parsers:
+        parser_results[p] = 0
+
+    # read urdf file and check for words
+    words = {'xacro': 0,'package': 0}
+
+    tool_cmp_results_column_name = 'n_passed_urdfs'
+    tool_cmp_results = pd.DataFrame(0, index=parsers, columns=[tool_cmp_results_column_name])
+
+    if isinstance(urdf_files, list):
+        if urdf_parsing_results is None:
+            urdf_parsing_results = get_parsings_information(urdf_files, parsers)
+
+        # add word columns
+        for word in words.keys():
+            urdf_parsing_results[word] = 0
+            tool_cmp_results[word] = 0
+
+        for urdf_file in urdf_files:
+            words = _get_word_information(words, urdf_file)
+            urdf_parsing_results.loc[urdf_file, list(words.keys())] = list(words.values())
+
+        # dropping the count column, as we're not using it
+        urdf_parsing_results = urdf_parsing_results.drop(['count'], axis=1)
+        
+        tool_cmp_results.loc[:,tool_cmp_results_column_name] = urdf_parsing_results.iloc[:,0:len(parsers)].sum()
+        
+        total_files_words = words
+        for word in words:
+            total_files_words[word] = urdf_parsing_results.query(f"{word} > 0").shape[0]
+            for p in parsers:
+                n_passed_with_word = urdf_parsing_results.query(f"{p} == True & {word} > 0").shape[0]
+                tool_cmp_results.loc[p,word] = f"{n_passed_with_word}/{tool_cmp_results.loc[p,tool_cmp_results_column_name]}"
+        
+        n_urdf_files = urdf_parsing_results.shape[0]
+
+        tool_cmp_results = tool_cmp_results.rename(columns={w:f"n_{w}_passed, total: {total_files_words[w]}" for w in words})
+        tool_cmp_results.loc[:,tool_cmp_results_column_name] = tool_cmp_results.loc[:,tool_cmp_results_column_name].astype(str) + f"/{n_urdf_files}"
+        
+    if out == True:
+        _save_information(tool_cmp_results, output_file=f"{DEFAULT_OUTPUT_DIR}/tool_comparison_schema")
+    else:
+        _save_information(tool_cmp_results, out)
+    
+    return tool_cmp_results
+
+
+def generate_model_information_schema(urdf_files, out=True):
+    kwargs = {'joints': True, 'links': True}
+    urdfs_information: list[URDFInformation] = []
+    if isinstance(urdf_files, list):
+        urdfs_information = get_models_information(urdf_files, **kwargs)
+    else:
+        urdfs_information.append(get_model_information(urdf_files, **kwargs))
+    
+    if out == True:
+        save_model_information(urdfs_information, output_file=f"{DEFAULT_OUTPUT_DIR}/model_information_schema", full_results=True)
+    else:
+        save_model_information(urdfs_information, output_file=out, full_results=True)
+
+    # TODO: change urdfs_information and return a pandas Dataframe instead, to be consistent with the other get_XX_schema functions
+
+    return urdfs_information
+
+
+def generate_urdf_parsing_comparison_schema(urdf_files, out=True):
+    parsers = URDFparser.supported_parsers 
+    if isinstance(urdf_files, list):
+        parsing_results = get_parsings_information(urdf_files, parsers)
+    else:
+        parsing_results = get_parsing_information(urdf_files, parsers) # TODO: check up with the urdf_root_dir
+
+    if out == True:
+        _save_information(parsing_results, output_file=f"{DEFAULT_OUTPUT_DIR}/urdf_parsing_comparison_schema")
+    else:
+        _save_information(parsing_results, out)
+
+    return parsing_results    
+
+
+def generate_duplicates_comparison_schema(duplicates_dir, out=True):
+    duplicates_subdirectories = _get_subdirectories(duplicates_dir)
+
+    # create dataframe with indices as subdirs
+    meta_information = _get_meta_information_duplicates(duplicates_subdirectories[0]) # get an example of the meta_information attributes
+    duplicates_results_columns = [info for info in meta_information.keys()] + ["source","n_urdf_files","n_joints","n_links","visual_meshes","collision_meshes"]
+    duplicates_results = pd.DataFrame(columns=duplicates_results_columns)
+    
+    for subdirectory in duplicates_subdirectories:
+        duplicates_results = _get_duplicates_information(subdirectory, duplicates_results)
+
+    if out == True:
+        _save_information(duplicates_results, output_file=f"{DEFAULT_OUTPUT_DIR}/duplicates_comparison_schema")
+    else:
+        _save_information(duplicates_results, out)
+
+
+def _get_duplicates_information(dir, duplicates_results):
+    meta_information = _get_meta_information_duplicates(dir)
+    subdirectories = _get_subdirectories(dir)
+
+    model_information_kwargs = {'joints': True, 'links': True}
+    # for each subdirectory in the current directory, get the urdf files, and run the analysis. Add results to dataframe
+    for subdir in subdirectories:
+        source_information = _get_source_information_duplicates(subdir)
+        urdf_files = search_for_urdfs(subdir)
+
+        # perform analysis
+        n_urdf_files = len(urdf_files)
+
+        if n_urdf_files > 1:
+            urdfs_information: list(URDFInformation) = get_models_information(urdf_files, **model_information_kwargs)
+            n_joints = 0
+            n_links = 0
+            visual_meshes = {}
+            collision_meshes = {}
+            for urdf in urdfs_information:
+                n_joints += urdf.joint_information.n_joints
+                n_links += urdf.link_information.n_links
+                visual_meshes = _get_n_mesh_types(visual_meshes, urdf.link_information.visual_mesh_types)
+                collision_meshes = _get_n_mesh_types(collision_meshes, urdf.link_information.collision_mesh_types)
+        else:
+            urdf_information: URDFInformation = get_model_information(urdf_files[0], **model_information_kwargs)
+            n_joints = urdf_information.joint_information.n_joints
+            n_links = urdf_information.link_information.n_links
+            visual_meshes = urdf_information.link_information.visual_mesh_types
+            collision_meshes = urdf_information.link_information.collision_mesh_types
+
+        # consider adding number of urdf_parsers that each file can sucessfully pass through
+
+        # TODO: make it more flexible, so if new parameters are added to the meta_information or source_information, then they will also be incldued in the results
+        results = {'name': meta_information['name'], 
+                    'source': source_information['source'], 
+                    'type': meta_information['type'],
+                    'manufacturer': meta_information['manufacturer'],
+                    'n_urdf_files': n_urdf_files,
+                    'n_joints': n_joints,
+                    'n_links': n_links,
+                    'visual_meshes': str(visual_meshes),
+                    'collision_meshes': str(collision_meshes)}
+        
+        duplicates_results = pd.concat([duplicates_results,pd.DataFrame(data=results, index=[0])])
+        # accumulate to one index using: pd.MultiIndex.from_frame(df)
+
+    return duplicates_results
+
+
+def _get_meta_information_duplicates(duplicates_dir):
+    import json
+    
+    with open(f"{Path(duplicates_dir, META_INFORMATION_FILENAME)}", 'r') as f:
+        meta_information = json.load(f)
+
+    return meta_information
+
+def _get_source_information_duplicates(dir):
+    import json
+    
+    try:
+        with open(f"{Path(dir, SOURCE_INFORMATION_FILENAME)}", 'r') as f:
+            source_information = json.load(f)
+    except:
+        sources_information_files = []
+        for path in Path(dir).rglob(f"{SOURCE_INFORMATION_FILENAME}"):
+            sources_information_files.append(path)
+        with open(f"{Path(sources_information_files[0])}", 'r') as f:
+            source_information = json.load(f)
+
+    return source_information
+
+
+def _get_n_mesh_types(mesh, link_mesh_dict):
+    for mesh_type in link_mesh_dict.keys():
+        if mesh_type not in mesh:
+            mesh[mesh_type] = link_mesh_dict[mesh_type]
+        else:
+            mesh[mesh_type] += link_mesh_dict[mesh_type]
+    return mesh
+
+def _get_subdirectories(dir):
+    subdirectories = [f.path for f in os.scandir(dir) if f.is_dir()]
+    return subdirectories
 
 def get_model_information(filename: str=None, model_analysis: ModelAnalysis=None, **kwargs):
     """
@@ -66,7 +275,7 @@ def get_model_information(filename: str=None, model_analysis: ModelAnalysis=None
         urdf_root_dir = None
         if 'urdf_root_dir' in kwargs:
             urdf_root_dir = kwargs['urdf_root_dir']
-        root = model_analysis.xml_urdf_reader(filename, urdf_root_dir)
+        model_analysis.xml_urdf_reader(filename, urdf_root_dir)
 
     # checking that the file has been parsed by the xml reader in model_analysis
     if model_analysis is None or model_analysis.root is None:
@@ -116,8 +325,10 @@ def get_models_information(urdf_files: list[str], **kwargs):
 
         urdf_root_dir = os.path.dirname(os.path.abspath(urdf_file))
         model_analysis.xml_urdf_reader(urdf_file, urdf_root_dir)
-        if 'filename' in kwargs.keys():
-            kwargs['filename'] = os.path.basename(urdf_file)
+        # if 'filename' in kwargs.keys():
+        #     kwargs['filename'] = os.path.basename(urdf_file)
+        # else:
+        kwargs['filename'] = os.path.basename(urdf_file) # TODO: check if this is working or if I messed everything up
         urdf_information = get_model_information(model_analysis=model_analysis, **kwargs)
 
         urdfs_information.append(urdf_information)
@@ -179,13 +390,6 @@ def save_model_information(urdfs_information: list[URDFInformation], output_file
     return df_results
 
 
-def save_parsing_information(df_results, output_file: str=None):
-    l = logging.getLogger("urdf_analyzer")
-
-    df_results = _save_information(df_results, output_file)
-    return df_results
-
-
 
 def _save_information(df_results, output_file: str=None):
     l = logging.getLogger("urdf_analyzer")
@@ -199,6 +403,7 @@ def _save_information(df_results, output_file: str=None):
         os.mkdir(dir)
 
     # check if provided filename has extension .csv
+    # TODO: check if the provided filename has an extension, if not use .csv as default
     ext = [".csv"]
     if output_file[-4:] != ext[0]:
         output_file += ext[0]

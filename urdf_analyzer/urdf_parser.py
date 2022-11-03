@@ -4,7 +4,8 @@ import os
 
 class URDFparser:
 
-    supported_parsers = ['yourdfpy','urdfpy','roboticstoolbox','matlab'] 
+    # supported_parsers = ['yourdfpy','urdfpy','roboticstoolbox','matlab'] 
+    supported_parsers = ['yourdfpy','urdfpy','roboticstoolbox'] 
 
     def _set_default_parser(self):
         default_parser = self.supported_parsers[0]
@@ -28,19 +29,19 @@ class URDFparser:
         elif parser == self.supported_parsers[2]:
             import roboticstoolbox as rtb
             self.parser[parser] = rtb
-        elif parser == self.supported_parsers[3]:
-            try:
-                import matlab.engine
-                eng = matlab.engine.start_matlab()
-                self.parser[parser] = eng
-            except ImportError as e:
-                self.logger.error(f"The matlab engine for python is not installed. Skipping it, and defaulting to {self.supported_parsers[0]}")
-                self._set_default_parser()
+        # elif parser == self.supported_parsers[3]:
+        #     try:
+        #         import matlab.engine
+        #         eng = matlab.engine.start_matlab()
+        #         self.parser[parser] = eng
+        #     except ImportError as e:
+        #         self.logger.error(f"The matlab engine for python is not installed. Skipping it, and defaulting to {self.supported_parsers[0]}")
+        #         self._set_default_parser()
         self._set_urdf_loader()
 
 
 
-
+    # programmed as a function instead of just defining in a dictionary with the supported_parser, since some parsers may require multiple steps for parsing urdf files
     def _set_urdf_loader(self):
         parser = list(self.parser.keys())[0]
         # yourdfpy
@@ -68,7 +69,7 @@ class URDFparser:
         try:
             os.chdir(urdf_root_dir)
             self.logger.info(f"Trying to load urdf file: {urdf_root_dir}/{filename_only}")
-            model = self.urdf_loader(filename_only)
+            model = self.urdf_loader(Path(urdf_root_dir,filename_only))
             self.logger.info(f"Successfully loaded {urdf_root_dir}/{filename_only} using the urdf loader {list(self.parser.keys())[0]}")
         except:
             self.logger.warning(f"Failed to load {urdf_root_dir}/{filename_only}")
