@@ -143,23 +143,26 @@ def generate_duplicates_comparison_schema(duplicates_dir, out=True):
 
     # create dataframe with indices as subdirs
     meta_information = _get_meta_information_duplicates(duplicates_subdirectories[0]) # get an example of the meta_information attributes
-    duplicates_results_columns = [info for info in meta_information.keys()] + ["source","n_urdf_files","n_joints","n_links","visual_meshes","collision_meshes"]
+    duplicates_results_columns = [info for info in meta_information.keys()] + ["source","n_urdf_files","n_joints","n_links","visual_meshes","collision_meshes","fk_same"]
     duplicates_results = pd.DataFrame(columns=duplicates_results_columns)
     
     for subdirectory in duplicates_subdirectories:
         duplicates_results = _get_duplicates_information(subdirectory, duplicates_results)
 
     if out == True:
-        _save_information(duplicates_results, output_file=f"{DEFAULT_OUTPUT_DIR}/duplicates_comparison_schema")
+        _save_information(duplicates_results, output_file=f"{DEFAULT_OUTPUT_DIR}/duplicates_comparison_schema.csv")
     else:
         _save_information(duplicates_results, out)
 
 
 def _get_duplicates_information(dir, duplicates_results):
+    logger = logging.getLogger("urdf_analyzer")
     meta_information = _get_meta_information_duplicates(dir)
     subdirectories = _get_subdirectories(dir)
 
     model_information_kwargs = {'joints': True, 'links': True}
+    transformations = {}
+    
     # for each subdirectory in the current directory, get the urdf files, and run the analysis. Add results to dataframe
     for subdir in subdirectories:
         source_information = _get_source_information_duplicates(subdir)
@@ -179,12 +182,19 @@ def _get_duplicates_information(dir, duplicates_results):
                 n_links += urdf.link_information.n_links
                 visual_meshes = _get_n_mesh_types(visual_meshes, urdf.link_information.visual_mesh_types)
                 collision_meshes = _get_n_mesh_types(collision_meshes, urdf.link_information.collision_mesh_types)
+            transformations[f"{meta_information['name']}_{source_information['source']}"] = None
         else:
-            urdf_information: URDFInformation = get_model_information(urdf_files[0], **model_information_kwargs)
+            filename = urdf_files[0]
+            urdf_information: URDFInformation = get_model_information(filename, **model_information_kwargs)
             n_joints = urdf_information.joint_information.n_joints
             n_links = urdf_information.link_information.n_links
             visual_meshes = urdf_information.link_information.visual_mesh_types
             collision_meshes = urdf_information.link_information.collision_mesh_types
+            try:
+                model = _parser_urdf(logging.getLogger("urdf_analyzer"),filename,'roboticstoolbox')
+                transformations[f"{meta_information['name']}_{source_information['source']}"] = model.fkine(model.q)
+            except:
+                transformations[f"{meta_information['name']}_{source_information['source']}"] = None
 
         # consider adding number of urdf_parsers that each file can sucessfully pass through
 
@@ -201,7 +211,31 @@ def _get_duplicates_information(dir, duplicates_results):
         
         duplicates_results = pd.concat([duplicates_results,pd.DataFrame(data=results, index=[0])])
         # accumulate to one index using: pd.MultiIndex.from_frame(df)
+    
+    n_duplicates = len(subdirectories)
 
+    import itertools
+    if len(transformations) > 1:
+        for transformation1,transformation2 in itertools.combinations(transformations, 2):
+            if transformations[transformation1] != transformations[transformation2]: 
+                if not Path(DEFAULT_TRANFORMATION_COMPARISON_DIR).exists():
+                    os.mkdir(DEFAULT_TRANFORMATION_COMPARISON_DIR)
+                # TODO: fix this, so the same transformation isn't saved multiple times (waste of resources)
+                try:
+                    import numpy as np
+                    transformation_a = np.array(transformations[transformation1])
+                    transformation_b = np.array(transformations[transformation2])
+                    np.savetxt(Path(DEFAULT_TRANFORMATION_COMPARISON_DIR,f"{transformation1}.txt"),transformation_a,fmt='%.4f')
+                    np.savetxt(Path(DEFAULT_TRANFORMATION_COMPARISON_DIR,f"{transformation2}.txt"),transformation_b,fmt='%.4f')
+                    transformation_diff = np.subtract(transformation_a, transformation_b)
+                    np.savetxt(Path(DEFAULT_TRANFORMATION_COMPARISON_DIR,f"{meta_information['name']}_diff_{transformation1.split('_')[-1]}_{transformation2.split('_')[-1]}.txt"),np.array(transformation_diff),fmt='%.4f')
+                except:
+                    logger.warning("Error occurred when saving the transformations of the duplicates.")
+
+                duplicates_results.iloc[len(duplicates_results)-n_duplicates:len(duplicates_results), duplicates_results.columns.get_loc('fk_same')] = False
+            else:
+                duplicates_results.iloc[len(duplicates_results)-n_duplicates:len(duplicates_results), duplicates_results.columns.get_loc('fk_same')] = True
+    
     return duplicates_results
 
 
@@ -336,7 +370,7 @@ def get_models_information(urdf_files: list[str], **kwargs):
     return urdfs_information
 
 
-def _parser_urdf(logger: logging.Logger, filename: str, parser: str, urdf_root_dir: str):
+def _parser_urdf(logger: logging.Logger, filename: str, parser: str, urdf_root_dir: str=None):
     tool_parser = URDFparser(parser, logger)
     model = tool_parser.load_urdf(filename, urdf_root_dir)
     return model
@@ -404,12 +438,17 @@ def _save_information(df_results, output_file: str=None):
 
     # check if provided filename has extension .csv
     # TODO: check if the provided filename has an extension, if not use .csv as default
-    ext = [".csv"]
-    if output_file[-4:] != ext[0]:
-        output_file += ext[0]
+    ext = ["csv", "md", "json"]
+    if output_file.split(".")[-1] not in ext:
+        output_file += "." + ext[0]
     elif Path(output_file).exists():
         l.warning(f"The file {output_file} exists. Overwriting it.")
 
-    df_results.to_csv(Path(output_file))
+    if output_file.split(".")[-1] == ext[0]:
+        df_results.to_csv(Path(output_file))
+    elif output_file.split(".")[-1] == ext[1]:
+        df_results.to_markdown(Path(output_file))
+    elif output_file.split(".")[-1] == ext[2]:
+        df_results.to_json(Path(output_file))
 
     return df_results

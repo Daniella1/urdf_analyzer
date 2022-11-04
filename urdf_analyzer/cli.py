@@ -7,6 +7,9 @@ import urdf_analyzer.api as api
 from urdf_analyzer.urdf_parser import URDFparser
 
 
+# TODO: remove when finished implementing
+import warnings
+warnings.filterwarnings('ignore')
 
 def setup_logger(args):
     if args.logger_config is not None:
