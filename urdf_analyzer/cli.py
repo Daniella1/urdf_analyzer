@@ -218,8 +218,8 @@ def main():
     manual_test_list6 = ['parsing-information','--urdf-search-dir','./resources/urdf_files/adept_mobile_robots/','--all-parsers','--out']
     manual_test_list7 = ['generate-schemas', 'model-info', '--urdf-search-dir','resources/urdf_files']
     manual_test_list8 = ['generate-schemas','tool-cmp', '--urdf-search-dir', 'resources/urdf_files']
-    manual_test_list9 = ['generate-schemas','duplicates-cmp', '--duplicates-dir', 'resources/urdf_files/duplicates']
-    manual_test_list10 = ['generate-schemas','model-info', 'tool-cmp', 'urdf-parse-cmp','duplicates-cmp','--urdf-search-dir', 'resources/urdf_files', '--duplicates-dir', 'resources/urdf_files/duplicates']
+    manual_test_list9 = ['generate-schemas','duplicates-cmp', '--duplicates-dir', 'resources/urdf_files_dataset/duplicates']
+    manual_test_list10 = ['generate-schemas','model-info', 'tool-cmp', 'urdf-parse-cmp','duplicates-cmp','--urdf-search-dir', 'resources/urdf_files', '--duplicates-dir', 'resources/urdf_files_dataset/duplicates']
     manual_test_list11 = ['generate-schemas','urdf-parse-cmp', '--urdf-search-dir', 'resources/urdf_files']
     # TODO: add warning if the urdf search is done in a non-existing directory
     create_urdf_analyzer(manual_test=manual_test_list9)

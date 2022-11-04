@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Union
 import pandas as pd
+import itertools
 import logging
 import os
 
@@ -48,6 +49,10 @@ def _count_word_in_urdf_file(word, urdf_file):
     with open(urdf_file) as f:
         return int(f.read().count(word))
 
+def _count_n_lines_in_file(file):
+    with open(file, 'r') as fp:
+        n_lines = len(fp.readlines())
+    return n_lines
 
 def _get_word_information(words, file):
     for word in list(words.keys()):
@@ -143,19 +148,24 @@ def generate_duplicates_comparison_schema(duplicates_dir, out=True):
 
     # create dataframe with indices as subdirs
     meta_information = _get_meta_information_duplicates(duplicates_subdirectories[0]) # get an example of the meta_information attributes
-    duplicates_results_columns = [info for info in meta_information.keys()] + ["source","n_urdf_files","n_joints","n_links","visual_meshes","collision_meshes","fk_same"]
-    duplicates_results = pd.DataFrame(columns=duplicates_results_columns)
+    meta_info_columns = [info for info in meta_information.keys()]
+    duplicates_information_columns = meta_info_columns + ["source","n_urdf_files","n_joints","n_links","visual_meshes","collision_meshes","n_lines"]
+    duplicates_comparisons_columns = meta_info_columns + ["sources","joints_diff","links_diff","mesh_diff","fk_diff","n_lines_diff"]
+    duplicates_information = pd.DataFrame(columns=duplicates_information_columns)
+    duplicates_comparisons = pd.DataFrame(columns=duplicates_comparisons_columns)
     
     for subdirectory in duplicates_subdirectories:
-        duplicates_results = _get_duplicates_information(subdirectory, duplicates_results)
+        duplicates_information, duplicates_comparisons = _get_duplicates_information(subdirectory, duplicates_information, duplicates_comparisons)
 
     if out == True:
-        _save_information(duplicates_results, output_file=f"{DEFAULT_OUTPUT_DIR}/duplicates_comparison_schema.csv")
+        _save_information(duplicates_information, output_file=f"{DEFAULT_OUTPUT_DIR}/duplicates_information_schema.csv")
+        _save_information(duplicates_comparisons, output_file=f"{DEFAULT_OUTPUT_DIR}/duplicates_comparison_schema.csv")
     else:
-        _save_information(duplicates_results, out)
+        _save_information(duplicates_information, out)
+        _save_information(duplicates_comparisons, out)
 
 
-def _get_duplicates_information(dir, duplicates_results):
+def _get_duplicates_information(dir, duplicates_information, duplicates_comparisons):
     logger = logging.getLogger("urdf_analyzer")
     meta_information = _get_meta_information_duplicates(dir)
     subdirectories = _get_subdirectories(dir)
@@ -175,11 +185,13 @@ def _get_duplicates_information(dir, duplicates_results):
             urdfs_information: list(URDFInformation) = get_models_information(urdf_files, **model_information_kwargs)
             n_joints = 0
             n_links = 0
+            n_lines = 0
             visual_meshes = {}
             collision_meshes = {}
             for urdf in urdfs_information:
                 n_joints += urdf.joint_information.n_joints
                 n_links += urdf.link_information.n_links
+                # n_lines += _count_n_lines_in_file(Path(subdir,urdf.filename)) # TODO: implement n_lines
                 visual_meshes = _get_n_mesh_types(visual_meshes, urdf.link_information.visual_mesh_types)
                 collision_meshes = _get_n_mesh_types(collision_meshes, urdf.link_information.collision_mesh_types)
             transformations[f"{meta_information['name']}_{source_information['source']}"] = None
@@ -190,6 +202,7 @@ def _get_duplicates_information(dir, duplicates_results):
             n_links = urdf_information.link_information.n_links
             visual_meshes = urdf_information.link_information.visual_mesh_types
             collision_meshes = urdf_information.link_information.collision_mesh_types
+            n_lines = _count_n_lines_in_file(filename)
             try:
                 model = _parser_urdf(logging.getLogger("urdf_analyzer"),filename,'roboticstoolbox')
                 transformations[f"{meta_information['name']}_{source_information['source']}"] = model.fkine(model.q)
@@ -197,9 +210,10 @@ def _get_duplicates_information(dir, duplicates_results):
                 transformations[f"{meta_information['name']}_{source_information['source']}"] = None
 
         # consider adding number of urdf_parsers that each file can sucessfully pass through
+        
 
         # TODO: make it more flexible, so if new parameters are added to the meta_information or source_information, then they will also be incldued in the results
-        results = {'name': meta_information['name'], 
+        information_results = {'name': meta_information['name'], 
                     'source': source_information['source'], 
                     'type': meta_information['type'],
                     'manufacturer': meta_information['manufacturer'],
@@ -207,14 +221,17 @@ def _get_duplicates_information(dir, duplicates_results):
                     'n_joints': n_joints,
                     'n_links': n_links,
                     'visual_meshes': str(visual_meshes),
-                    'collision_meshes': str(collision_meshes)}
+                    'collision_meshes': str(collision_meshes),
+                    'n_lines': n_lines}
+
         
-        duplicates_results = pd.concat([duplicates_results,pd.DataFrame(data=results, index=[0])])
+        
+        duplicates_information = pd.concat([duplicates_information, pd.DataFrame(data=information_results, index=[0])])
+        
         # accumulate to one index using: pd.MultiIndex.from_frame(df)
     
     n_duplicates = len(subdirectories)
 
-    import itertools
     if len(transformations) > 1:
         for transformation1,transformation2 in itertools.combinations(transformations, 2):
             if transformations[transformation1] != transformations[transformation2]: 
@@ -231,12 +248,58 @@ def _get_duplicates_information(dir, duplicates_results):
                     np.savetxt(Path(DEFAULT_TRANFORMATION_COMPARISON_DIR,f"{meta_information['name']}_diff_{transformation1.split('_')[-1]}_{transformation2.split('_')[-1]}.txt"),np.array(transformation_diff),fmt='%.4f')
                 except:
                     logger.warning("Error occurred when saving the transformations of the duplicates.")
-
-                duplicates_results.iloc[len(duplicates_results)-n_duplicates:len(duplicates_results), duplicates_results.columns.get_loc('fk_same')] = False
+                fk_diff = True
+                # duplicates_information.iloc[len(duplicates_information)-n_duplicates:len(duplicates_information), duplicates_information.columns.get_loc('fk_same')] = False
             else:
-                duplicates_results.iloc[len(duplicates_results)-n_duplicates:len(duplicates_results), duplicates_results.columns.get_loc('fk_same')] = True
+                fk_diff = ""
+                # duplicates_information.iloc[len(duplicates_information)-n_duplicates:len(duplicates_information), duplicates_information.columns.get_loc('fk_same')] = True
+
+
     
-    return duplicates_results
+    comparison_results = {'name': meta_information['name'], 
+                    'type': meta_information['type'],
+                    'manufacturer': meta_information['manufacturer'],
+                    'sources': [],
+                    'joints_diff': None,
+                    'links_diff': None,
+                    'mesh_diff': None,
+                    'fk_diff': fk_diff,
+                    'n_lines_diff': n_lines
+                    }
+
+
+
+    cur_urdf_files_index = len(duplicates_information)-n_duplicates
+    joints_info = duplicates_information.iloc[cur_urdf_files_index:len(duplicates_information),duplicates_information.columns.get_loc("n_joints")]
+    links_info = duplicates_information.iloc[cur_urdf_files_index:len(duplicates_information),duplicates_information.columns.get_loc("n_links")]
+    visual_mesh_info = duplicates_information.iloc[cur_urdf_files_index:len(duplicates_information),duplicates_information.columns.get_loc("visual_meshes")]
+    collision_mesh_info = duplicates_information.iloc[cur_urdf_files_index:len(duplicates_information),duplicates_information.columns.get_loc("collision_meshes")]
+    n_lines_info = duplicates_information.iloc[cur_urdf_files_index:len(duplicates_information),duplicates_information.columns.get_loc("n_lines")]
+
+    sources = list(duplicates_information.iloc[cur_urdf_files_index:len(duplicates_information),duplicates_information.columns.get_loc("source")])
+    comparison_results['sources'] = str(sources)
+
+    comparison_results = _compare_information(joints_info, comparison_results, "joints_diff")
+    comparison_results = _compare_information(links_info, comparison_results, "links_diff")
+    comparison_results = _compare_information(visual_mesh_info, comparison_results, "mesh_diff")
+    if comparison_results["mesh_diff"] != "":
+        comparison_results = _compare_information(collision_mesh_info, comparison_results, "mesh_diff")
+    comparison_results = _compare_information(n_lines_info, comparison_results, "n_lines_diff")
+    
+
+    duplicates_comparisons = pd.concat([duplicates_comparisons, pd.DataFrame(data=comparison_results, index=[0])])
+    
+    return duplicates_information, duplicates_comparisons
+
+
+def _compare_information(information, comparison_results, key):
+    for info1, info2 in itertools.combinations(information, 2):
+            if info1 != info2: 
+                comparison_results[key] = True
+            else:
+                comparison_results[key] = ""
+    return comparison_results
+
 
 
 def _get_meta_information_duplicates(duplicates_dir):
@@ -438,7 +501,7 @@ def _save_information(df_results, output_file: str=None):
 
     # check if provided filename has extension .csv
     # TODO: check if the provided filename has an extension, if not use .csv as default
-    ext = ["csv", "md", "json"]
+    ext = ["csv", "md", "json", "xlsx"]
     if output_file.split(".")[-1] not in ext:
         output_file += "." + ext[0]
     elif Path(output_file).exists():
@@ -450,5 +513,7 @@ def _save_information(df_results, output_file: str=None):
         df_results.to_markdown(Path(output_file))
     elif output_file.split(".")[-1] == ext[2]:
         df_results.to_json(Path(output_file))
+    elif output_file.split(".")[-1] == ext[3]:
+        df_results.to_excel(Path(output_file))
 
     return df_results
