@@ -1,4 +1,24 @@
-Todo tool:
+# Command Line Interface
+
+The following shows the different use cases that the _urdf_analyzer_ supports.
+
+## Generate schemas
+
+Obtain the model-information of the urdf files found in a specific directory (recursively).
+```
+urdf_analyzer generate-schemas model-info --urdf-search-dir <directory-to-search-for-urdfs>
+```
+Compare parsing performance of urdf tools on urdf files found in a specific directory (recursively).
+```
+urdf_analyzer generate-schemas tool-cmp --urdf-search-dir <directory-to-search-for-urdfs>
+```
+Compare duplicates in a specified folder.
+```
+urdf_analyzer generate-schemas duplicates-cmp --duplicates-dir <directory-containing-duplicates>
+```
+
+
+## Todo tool:
 * Testing
     - create tests for model_analysis
     - create tests for joint
