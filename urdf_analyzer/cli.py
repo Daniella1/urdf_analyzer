@@ -37,12 +37,15 @@ def generate_schemas(args):
     if 'duplicates-cmp' in args.generate_schema and (args.duplicates_dir is None):
         l.error(f"The 'duplicates-cmp' is provided without the 'duplicates-dir'. Please provide the duplicates directory. Exiting.")
         return
+    if 'dup-cmp-parser' in args.generate_schema and ('duplicates-cmp' not in args.generate_schema):
+        l.warning(f"The 'dup-cmp-parser' argument is provided without the 'duplicates-cmp' argument. Ignoring.")
     if args.duplicates_dir is not None:
         l.warning(f"The 'duplicates-dir' argument is provided without the 'duplicates-cmp' argument. Ignoring.")
 
     urdf_files = None
     if args.urdf_search_dir is not None:
         urdf_files = api.search_for_urdfs(args.urdf_search_dir)
+        l.info(f"Found {len(urdf_files)} urdf files in the search directory {args.urdf_search_dir}")
     elif args.filename is not None:
         urdf_files = args.filename
     
@@ -64,6 +67,7 @@ def model_information(args):
 
     if args.urdf_search_dir is not None:
         urdf_files = api.search_for_urdfs(args.urdf_search_dir)
+        l.info(f"Found {len(urdf_files)} urdf files in the search directory {args.urdf_search_dir}")
         urdfs_information: list[api.URDFInformation] = api.get_models_information(urdf_files=urdf_files, **vars(args))
         
     elif args.filename is not None:
@@ -97,6 +101,7 @@ def parsing_information(args):
 
     if args.urdf_search_dir is not None:
         urdf_files = api.search_for_urdfs(args.urdf_search_dir)
+        l.info(f"Found {len(urdf_files)} urdf files in the search directory {args.urdf_search_dir}")
         parsing_results = api.get_parsings_information(urdf_files, parser)
 
     elif args.filename is not None:
@@ -174,6 +179,7 @@ def create_generate_schemas_parser(subparser):
     generate_schemas_parser.add_argument("generate_schema", choices=['tool-cmp','model-info','urdf-parse-cmp','duplicates-cmp'], default=[None, None, None, None], nargs="+", help=f"the types of schemas that can be generated.") # TODO: fix help description
     generate_schemas_parser.add_argument("--out-dir", type=str, required=False, help=f"The output directory for the generated schemas.")
     generate_schemas_parser.add_argument("--duplicates-dir", type=str, required=False, help="The directory where the duplicate urdf files are. Required only when 'duplicates-cmp' is provided.")
+    generate_schemas_parser.add_argument("--dup-cmp-parser", type=str, required=False, help=f"The parser to run the duplicate urdf files through. Can choose from {URDFparser.supported_parsers}, or can also choose 'all' to run the files through each supported parser.")
     # TODO: add argument duplicates-subdir, in case you only want to compare one robot
     generate_schemas_parser.set_defaults(analyze=generate_schemas)
 
@@ -221,8 +227,9 @@ def main():
     manual_test_list9 = ['generate-schemas','duplicates-cmp', '--duplicates-dir', 'resources/urdf_files_dataset/duplicates']
     manual_test_list10 = ['generate-schemas','model-info', 'tool-cmp', 'urdf-parse-cmp','duplicates-cmp','--urdf-search-dir', 'resources/urdf_files', '--duplicates-dir', 'resources/urdf_files_dataset/duplicates']
     manual_test_list11 = ['generate-schemas','urdf-parse-cmp', '--urdf-search-dir', 'resources/urdf_files']
+    manual_test_list12 = ['generate-schemas','tool-cmp', '--urdf-search-dir', 'resources/urdf_files_dataset/urdf_files/random']
     # TODO: add warning if the urdf search is done in a non-existing directory
-    create_urdf_analyzer(manual_test=manual_test_list9)
+    create_urdf_analyzer(manual_test=[])
 
 
 if __name__ == '__main__':

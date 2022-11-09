@@ -42,7 +42,10 @@ def schema_generator(schemas, files, **kwargs):
         urdf_parsing_comparison = urdf_parsing_comparison if not None else None
         generate_tool_comparison_schema(files, urdf_parsing_comparison)
     if "duplicates-cmp" in schemas:
-        generate_duplicates_comparison_schema(kwargs['duplicates_dir'])
+        dup_cmp_parser = None
+        if 'dup_cmp_parser' in kwargs:
+            dup_cmp_parser = kwargs['dup_cmp_parser'] # TODO: implement dup_cmp_parser in the 'generate_duplicates_comparison_schema' function
+        generate_duplicates_comparison_schema(kwargs['duplicates_dir'], dup_cmp_parser)
 
 
 def _count_word_in_urdf_file(word, urdf_file):
@@ -67,7 +70,7 @@ def generate_tool_comparison_schema(urdf_files, urdf_parsing_results=None, out=T
         parser_results[p] = 0
 
     # read urdf file and check for words
-    words = {'xacro': 0,'package': 0}
+    words = {'xacro': 0,'package': 0, 'author':0}
 
     tool_cmp_results_column_name = 'n_passed_urdfs'
     tool_cmp_results = pd.DataFrame(0, index=parsers, columns=[tool_cmp_results_column_name])
@@ -143,7 +146,7 @@ def generate_urdf_parsing_comparison_schema(urdf_files, out=True):
     return parsing_results    
 
 
-def generate_duplicates_comparison_schema(duplicates_dir, out=True):
+def generate_duplicates_comparison_schema(duplicates_dir, dup_cmp_parser=None, out=True):
     duplicates_subdirectories = _get_subdirectories(duplicates_dir)
 
     # create dataframe with indices as subdirs

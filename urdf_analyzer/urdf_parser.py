@@ -6,6 +6,7 @@ class URDFparser:
 
     # supported_parsers = ['yourdfpy','urdfpy','roboticstoolbox','matlab'] 
     supported_parsers = ['yourdfpy','urdfpy','roboticstoolbox'] 
+    # supported_parsers = ['yourdfpy','matlab'] 
 
     def _set_default_parser(self):
         default_parser = self.supported_parsers[0]
@@ -69,7 +70,7 @@ class URDFparser:
         try:
             os.chdir(urdf_root_dir)
             self.logger.info(f"Trying to load urdf file: {urdf_root_dir}/{filename_only}")
-            model = self.urdf_loader(Path(urdf_root_dir,filename_only))
+            model = self.urdf_loader(str(Path(urdf_root_dir,filename_only)))
             self.logger.info(f"Successfully loaded {urdf_root_dir}/{filename_only} using the urdf loader {list(self.parser.keys())[0]}")
         except:
             self.logger.warning(f"Failed to load {urdf_root_dir}/{filename_only}")
