@@ -1,4 +1,5 @@
 from pathlib import Path
+from filecmp import cmp
 from typing import Union
 import pandas as pd
 import itertools
@@ -153,7 +154,7 @@ def generate_duplicates_comparison_schema(duplicates_dir, dup_cmp_parser=None, o
     meta_information = _get_meta_information_duplicates(duplicates_subdirectories[0]) # get an example of the meta_information attributes
     meta_info_columns = [info for info in meta_information.keys()]
     duplicates_information_columns = meta_info_columns + ["source","n_urdf_files","n_joints","n_links","visual_meshes","collision_meshes","n_lines"]
-    duplicates_comparisons_columns = meta_info_columns + ["sources","joints_diff","links_diff","mesh_diff","fk_diff","n_lines_diff"]
+    duplicates_comparisons_columns = meta_info_columns + ["sources","joints_diff","links_diff","mesh_diff","fk_diff","n_lines_diff","duplicate"]
     duplicates_information = pd.DataFrame(columns=duplicates_information_columns)
     duplicates_comparisons = pd.DataFrame(columns=duplicates_comparisons_columns)
     
@@ -175,11 +176,13 @@ def _get_duplicates_information(dir, duplicates_information, duplicates_comparis
 
     model_information_kwargs = {'joints': True, 'links': True}
     transformations = {}
+    files = []
     
     # for each subdirectory in the current directory, get the urdf files, and run the analysis. Add results to dataframe
     for subdir in subdirectories:
         source_information = _get_source_information_duplicates(subdir)
         urdf_files = search_for_urdfs(subdir)
+        files += urdf_files # add the found urdf files
 
         # perform analysis
         n_urdf_files = len(urdf_files)
@@ -258,6 +261,11 @@ def _get_duplicates_information(dir, duplicates_information, duplicates_comparis
                 # duplicates_information.iloc[len(duplicates_information)-n_duplicates:len(duplicates_information), duplicates_information.columns.get_loc('fk_same')] = True
 
 
+    duplicates = []
+    for f1, f2 in itertools.combinations(files,2):
+        if cmp(f1, f2, shallow=False):
+            duplicates += [f1, f2]
+    
     
     comparison_results = {'name': meta_information['name'], 
                     'type': meta_information['type'],
@@ -267,7 +275,8 @@ def _get_duplicates_information(dir, duplicates_information, duplicates_comparis
                     'links_diff': None,
                     'mesh_diff': None,
                     'fk_diff': fk_diff,
-                    'n_lines_diff': n_lines
+                    'n_lines_diff': n_lines,
+                    "duplicate": str(duplicates)
                     }
 
 
