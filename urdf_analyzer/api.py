@@ -78,7 +78,8 @@ def generate_tool_comparison_schema(urdf_files, urdf_parsing_results=None, out=T
 
     if isinstance(urdf_files, list):
         if urdf_parsing_results is None:
-            urdf_parsing_results = get_parsings_information(urdf_files, parsers)
+            # urdf_parsing_results = get_parsings_information(urdf_files, parsers)
+            urdf_parsing_results = _get_parsings_information_tool_cmp(urdf_files, parsers)
 
         # add word columns
         for word in words.keys():
@@ -484,6 +485,27 @@ def get_parsings_information(urdf_files: list[str], parser: Union[str, list[str]
         parsing_results = pd.concat([parsing_results, parsing_result])
 
     return parsing_results
+
+
+def _get_parsings_information_tool_cmp(urdf_files: list[str], parsers: Union[str, list[str]]=URDFparser.supported_parsers, urdf_root_dir: str=None):
+    l = logging.getLogger("urdf_analyzer")
+    if isinstance(parsers, str):
+        parsers = [parsers]
+
+    # results on urdf files and tools
+    urdfs_and_tools_results_column_names = parsers
+    urdfs_and_tools_results = pd.DataFrame(columns=urdfs_and_tools_results_column_names)
+    
+    for p in parsers:
+        tool_parser = URDFparser(p, l)
+        for urdf in urdf_files:
+            model = tool_parser.load_urdf(urdf, urdf_root_dir)
+            urdfs_and_tools_results.loc[urdf, p] = True if model is not None else False
+
+    urdfs_and_tools_results.loc[:,'count'] = urdfs_and_tools_results.sum(numeric_only=False, axis=1)
+    urdfs_and_tools_results = urdfs_and_tools_results.sort_values(by='count', ascending=False)
+
+    return urdfs_and_tools_results
 
 
 def save_model_information(urdfs_information: list[URDFInformation], output_file: str=None, full_results=False):
