@@ -38,6 +38,7 @@ urdf_analyzer generate-schemas duplicates-cmp --duplicates-dir <directory-contai
     - fix the checking of 'xacro' and 'package' to ensure it's not in the comments of the xml file
     - create a get_mesh_analysis_schema function that just takes out the mesh values from the model_information dataframe
     - consider adding a textual description of the differences between the duplicate urdfs
+    - setup the check_urdf as a parser, and make that the default one
 * Development CLI
     - add cli for geometry (.dae, .stl, .obj)
     - add cli for file analysis ('xacro' in file, 'package' in file)
