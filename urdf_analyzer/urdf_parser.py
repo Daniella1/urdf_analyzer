@@ -1,14 +1,15 @@
 from logging import Logger
 from pathlib import Path
+import subprocess
 import os
-
 
 import matlab.engine
 eng = matlab.engine.start_matlab()
 
+
 class URDFparser:
 
-    supported_parsers = ['yourdfpy','urdfpy','roboticstoolbox','matlab'] 
+    supported_parsers = ['yourdfpy','urdfpy','roboticstoolbox','matlab','check_urdf'] 
 
     def _set_default_parser(self):
         default_parser = self.supported_parsers[0]
@@ -34,11 +35,13 @@ class URDFparser:
             self.parser[parser] = rtb
         elif parser == self.supported_parsers[3]:
             try:
-                
                 self.parser[parser] = eng
             except ImportError as e:
                 self.logger.error(f"The matlab engine for python is not installed. Skipping it, and defaulting to {self.supported_parsers[0]}")
                 self._set_default_parser()
+
+        elif parser == self.supported_parsers[4]:
+            self.parser[parser] = 'check_urdf'
 
         self._set_urdf_loader()
 
@@ -59,6 +62,15 @@ class URDFparser:
         # matlab
         elif self.supported_parsers[3] == parser:
             self.urdf_loader = self.parser[parser].importrobot
+        # urdfdom check_urdf
+        elif self.supported_parsers[4] == parser:
+            def check_urdf(filename):
+                res = subprocess.run(f'check_urdf {filename}', shell=True, capture_output=True, text=True)
+                if res.returncode == 0: # success
+                    return res.stdout
+                else:
+                    return None
+            self.urdf_loader = lambda filename : check_urdf(filename)
         return self.urdf_loader
 
 
