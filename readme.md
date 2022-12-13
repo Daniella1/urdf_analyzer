@@ -1,8 +1,14 @@
-# Command Line Interface
+# URDF Analyzer
+
+This is a tool developed to analyze URDF Collections.
+It is created to be used as a standalone tool or together with the URDF Dataset (link).
+It allows analyzing single URDF files, or directories containing URDF files where schemas of the results can be generated.
+
+## Command Line Interface
 
 The following shows the different use cases that the _urdf_analyzer_ supports.
 
-## Generate schemas
+### Generate schemas
 
 Obtain the model-information of the urdf files found in a specific directory (recursively).
 ```
@@ -18,7 +24,7 @@ urdf_analyzer generate-schemas duplicates-cmp --duplicates-dir <directory-contai
 ```
 
 
-## Todo tool:
+### Todo tool:
 * Testing
     - create tests for model_analysis
     - create tests for joint
