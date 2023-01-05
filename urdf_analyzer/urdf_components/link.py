@@ -131,7 +131,7 @@ class LinksMetaInformation:
             self.collision_mesh_types = self._obtain_mesh_types(l.collision_geometry, self.collision_mesh_types)        
 
         # Save results to pandas DataFrame
-        self.df_columns_short = ["n_links", "links_names"]
+        self.df_columns_short = ["n_links", "link_names"]
         self.df_columns_full = self.df_columns_short + ["visual_geometry", "collision_geometry"]
         
 

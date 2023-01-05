@@ -113,8 +113,8 @@ def generate_tool_comparison_schema(urdf_files, urdf_parsing_results=None, out=T
         
     if out == True:
         _save_information(tool_cmp_results, output_file=f"{DEFAULT_OUTPUT_DIR}/tool_comparison_schema")
-    else:
-        _save_information(tool_cmp_results, out)
+    # else:
+    #     _save_information(tool_cmp_results, out)
     
     return tool_cmp_results
 
@@ -159,7 +159,7 @@ def generate_duplicates_comparison_schema(duplicates_file, dup_cmp_sources=None,
     # create dataframe with indices as subdirs
     meta_info_columns = ["name","variant"]
     duplicates_information_columns = meta_info_columns + ["source","n_urdf_files","n_joints","n_links","visual_meshes","collision_meshes","n_lines"]
-    duplicates_comparisons_columns = meta_info_columns + ["sources","joints_diff","links_diff","mesh_diff","fk_diff","n_lines_diff","duplicate"]
+    duplicates_comparisons_columns = meta_info_columns + ["sources","joints_diff","links_diff","mesh_diff","fk_diff","n_lines_diff","urdf_files"]
     duplicates_information = pd.DataFrame(columns=duplicates_information_columns)
     duplicates_comparisons = pd.DataFrame(columns=duplicates_comparisons_columns)
     
