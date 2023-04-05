@@ -3,3 +3,5 @@
 	url = https://github.com/Daniella1/urdf_files_dataset.git
 	update = rebase
 	branch = main
+[submodule "resources/urdf_analyzer"]
+	update = rebase
