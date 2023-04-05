@@ -1,3 +1,5 @@
 [submodule "resources/urdf_files_dataset"]
 	path = resources/urdf_files_dataset
 	url = https://github.com/Daniella1/urdf_files_dataset.git
+	update = rebase
+	branch = main
