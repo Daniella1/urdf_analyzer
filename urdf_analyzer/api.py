@@ -251,7 +251,7 @@ def __get_comparison_information(logger, duplicates_comparisons, duplicates_info
         for transformation1,transformation2 in itertools.combinations(transformations, 2):
             if transformations[transformation1] != transformations[transformation2]: 
                 if not Path(DEFAULT_TRANFORMATION_COMPARISON_DIR).exists():
-                    os.mkdir(DEFAULT_TRANFORMATION_COMPARISON_DIR)
+                    os.makedirs(DEFAULT_TRANFORMATION_COMPARISON_DIR)
                 # TODO: fix this, so the same transformation isn't saved multiple times (waste of resources)
                 try:
                     import numpy as np

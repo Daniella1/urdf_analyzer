@@ -69,7 +69,7 @@ class URDFparser:
         elif 'matlab' == parser:
             self.urdf_loader = self.parser[parser].importrobot
         # urdfdom check_urdf
-        elif 'urdfdom' == parser:
+        elif 'check_urdf' == parser:
             def check_urdf(filename):
                 res = subprocess.run(f'check_urdf {filename}', shell=True, capture_output=True, text=True)
                 if res.returncode == 0: # success
