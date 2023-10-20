@@ -1,7 +1,13 @@
+<p align="center">
+    <img alt="ViewCount" src="https://views.whatilearened.today/views/github/Daniella1/urdf_analyzer.svg">
+    <br>
+    Counting since 20-10-2023
+</p>
+
 # URDF Analyzer
 
 This is a tool developed to analyze URDF Collections.
-It is created to be used as a standalone tool or together with the URDF Dataset (link).
+It is created to be used as a standalone tool or together with the [URDF Dataset](https://github.com/Daniella1/urdf_files_dataset).
 It allows analyzing single URDF files, or directories containing URDF files where schemas of the results can be generated.
 
 ## Command Line Interface
