@@ -9,7 +9,8 @@ eng = matlab.engine.start_matlab()
 
 class URDFparser:
 
-    supported_parsers = ['yourdfpy','urdfpy','roboticstoolbox','matlab','check_urdf'] 
+    supported_parsers = ['yourdfpy','urdfpy','pybullet','roboticstoolbox','matlab','check_urdf'] 
+
 
     def _set_default_parser(self):
         default_parser = self.supported_parsers[0]
@@ -24,24 +25,29 @@ class URDFparser:
             return
             # TODO: do something other than just return
         self.parser = {}
-        if parser == self.supported_parsers[0]:
+        if parser == 'yourdfpy':
             import yourdfpy
             self.parser[parser] = yourdfpy
-        elif parser == self.supported_parsers[1]:
+        elif parser == 'urdfpy':
             import urdfpy
             self.parser[parser] = urdfpy
-        elif parser == self.supported_parsers[2]:
+        elif parser == 'roboticstoolbox':
             import roboticstoolbox as rtb
             self.parser[parser] = rtb
-        elif parser == self.supported_parsers[3]:
+        elif parser == 'matlab':
             try:
                 self.parser[parser] = eng
             except ImportError as e:
                 self.logger.error(f"The matlab engine for python is not installed. Skipping it, and defaulting to {self.supported_parsers[0]}")
                 self._set_default_parser()
 
-        elif parser == self.supported_parsers[4]:
+        elif parser == 'check_urdf':
             self.parser[parser] = 'check_urdf'
+
+        elif parser == 'pybullet':
+            import pybullet
+            pybullet.connect(pybullet.DIRECT)
+            self.parser[parser] = pybullet
 
         self._set_urdf_loader()
 
@@ -51,19 +57,19 @@ class URDFparser:
     def _set_urdf_loader(self):
         parser = list(self.parser.keys())[0]
         # yourdfpy
-        if self.supported_parsers[0] == parser:
+        if 'yourdfpy' == parser:
             self.urdf_loader = self.parser[parser].URDF.load
         # urdfpy
-        elif self.supported_parsers[1] == parser:
+        elif 'urdfpy' == parser:
             self.urdf_loader = self.parser[parser].URDF.load
         # roboticstoolbox
-        elif self.supported_parsers[2] == parser:
+        elif 'roboticstoolbox' == parser:
             self.urdf_loader = self.parser[parser].ERobot.URDF
         # matlab
-        elif self.supported_parsers[3] == parser:
+        elif 'matlab' == parser:
             self.urdf_loader = self.parser[parser].importrobot
         # urdfdom check_urdf
-        elif self.supported_parsers[4] == parser:
+        elif 'check_urdf' == parser:
             def check_urdf(filename):
                 res = subprocess.run(f'check_urdf {filename}', shell=True, capture_output=True, text=True)
                 if res.returncode == 0: # success
@@ -71,8 +77,16 @@ class URDFparser:
                 else:
                     return None
             self.urdf_loader = lambda filename : check_urdf(filename)
+        # pybullet
+        elif 'pybullet' == parser:
+            def parse_urdf(filename):
+                try:
+                    res = self.parser[parser].loadURDF(filename)
+                    return res
+                except:
+                    return None
+            self.urdf_loader = lambda filename : parse_urdf(filename)
         return self.urdf_loader
-
 
     
     def load_urdf(self, filename: str, urdf_root_dir: str=None):
